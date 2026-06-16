@@ -73,7 +73,12 @@ class CodingSession:
             await config.storage.append(model)
             entries = [info, model]
 
-        state = SessionState.from_entries(entries)
+        linear_state = SessionState.from_entries(entries)
+        state = (
+            SessionState.from_entries(entries, leaf_id=linear_state.active_leaf_id)
+            if linear_state.active_leaf_id is not None
+            else linear_state
+        )
         tools = config.tools if config.tools is not None else create_coding_tools(cwd=config.cwd)
         harness = AgentHarness(
             AgentHarnessConfig(

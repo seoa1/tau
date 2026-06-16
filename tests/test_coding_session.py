@@ -5,6 +5,7 @@ import pytest
 from tau_agent import AssistantMessage, ToolCall, ToolResultMessage, UserMessage
 from tau_agent.session import (
     JsonlSessionStorage,
+    LeafEntry,
     MessageEntry,
     ModelChangeEntry,
     SessionInfoEntry,
@@ -89,6 +90,34 @@ async def test_load_restores_existing_transcript(tmp_path: Path) -> None:
         UserMessage(content="Earlier"),
         AssistantMessage(content="Restored"),
     )
+
+
+@pytest.mark.anyio
+async def test_load_restores_active_leaf_branch(tmp_path: Path) -> None:
+    storage = JsonlSessionStorage(tmp_path / "session.jsonl")
+    root = MessageEntry(id="root", message=UserMessage(content="Root"))
+    left = MessageEntry(
+        id="left",
+        parent_id="root",
+        message=AssistantMessage(content="Inactive branch"),
+    )
+    right = MessageEntry(
+        id="right",
+        parent_id="root",
+        message=AssistantMessage(content="Active branch"),
+    )
+    await storage.append(root)
+    await storage.append(left)
+    await storage.append(right)
+    await storage.append(LeafEntry(entry_id="right"))
+
+    session = await CodingSession.load(_config(tmp_path, FakeProvider([]), storage))
+
+    assert session.messages == (
+        UserMessage(content="Root"),
+        AssistantMessage(content="Active branch"),
+    )
+    assert session.state.active_leaf_id == "right"
 
 
 @pytest.mark.anyio
