@@ -19,7 +19,8 @@ from tau_coding.skills import Skill
 from tau_coding.tools import create_coding_tools
 from tau_coding.tui import app as tui_app
 from tau_coding.tui.app import TauTuiApp
-from tau_coding.tui.widgets import render_session_sidebar
+from tau_coding.tui.state import ChatItem
+from tau_coding.tui.widgets import render_chat_item, render_session_sidebar
 
 
 class FakeSession:
@@ -57,13 +58,38 @@ def test_session_sidebar_renders_session_metadata() -> None:
     assert "review" in output
 
 
+def test_chat_items_render_as_unlabeled_blocks() -> None:
+    console = Console(record=True, width=40)
+
+    console.print(render_chat_item(ChatItem(role="user", text="Read the file")))
+    output = console.export_text()
+
+    assert "Read the file" in output
+    assert "you:" not in output
+    assert "assistant:" not in output
+    assert "tool:" not in output
+    assert output.startswith("╭")
+
+
+def test_chat_items_fold_long_unbroken_text_to_console_width() -> None:
+    console = Console(record=True, width=36)
+    long_text = "supercalifragilisticexpialidocious" * 2
+
+    console.print(render_chat_item(ChatItem(role="assistant", text=long_text)))
+    output = console.export_text()
+
+    assert max(len(line) for line in output.splitlines()) <= 36
+
+
 @pytest.mark.anyio
 async def test_tui_app_mounts_sidebar_and_transcript() -> None:
     app = TauTuiApp(FakeSession())
 
     async with app.run_test():
         assert app.query_one("#sidebar") is not None
-        assert app.query_one("#transcript") is not None
+        transcript = app.query_one("#transcript")
+        assert transcript is not None
+        assert transcript.min_width == 1
         assert app.query_one("#prompt") is not None
 
 

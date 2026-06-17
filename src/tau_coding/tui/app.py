@@ -169,7 +169,13 @@ class TauTuiApp(App[None]):
         with Horizontal(id="workspace"):
             yield SessionSidebar(id="sidebar")
             with Vertical(id="main-pane"):
-                yield TranscriptView(id="transcript", wrap=True, highlight=True, markup=False)
+                yield TranscriptView(
+                    id="transcript",
+                    min_width=1,
+                    wrap=True,
+                    highlight=True,
+                    markup=False,
+                )
                 yield PromptInput(placeholder="Ask Tau…", id="prompt")
                 yield Static("", id="autocomplete")
         yield Footer()

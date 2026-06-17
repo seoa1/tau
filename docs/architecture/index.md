@@ -37,5 +37,6 @@ The most important boundary is that `tau_agent` should stay portable. It can def
 - [Phase 15: Slash Command Registry](phase-15-slash-command-registry.md)
 - [Phase 16: Robust Resource Discovery](phase-16-resource-discovery.md)
 - [Phase 17: TUI Slash-command Autocomplete](phase-17-tui-autocomplete.md)
+- [Phase 17.5: TUI Transcript Wrapping](phase-17-5-transcript-wrapping.md)
 
 More pages will be added here as each phase lands.

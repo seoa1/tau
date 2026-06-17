@@ -16,20 +16,12 @@ from tau_coding.skills import Skill
 from tau_coding.tui.autocomplete import CompletionState
 from tau_coding.tui.state import ChatItem, TuiState
 
-_ROLE_LABELS = {
-    "user": "you",
-    "assistant": "assistant",
-    "tool": "tool",
-    "error": "error",
-    "status": "status",
-}
-
-_ROLE_STYLES = {
-    "user": "bold bright_cyan",
-    "assistant": "bold bright_green",
-    "tool": "bright_yellow",
-    "error": "bold bright_red",
-    "status": "dim",
+_ROLE_BLOCK_STYLES = {
+    "user": ("#58a6ff", "white on #101923"),
+    "assistant": ("#3fb950", "white on #101f17"),
+    "tool": ("#d29922", "white on #201b10"),
+    "error": ("#f85149", "white on #241315"),
+    "status": ("#8b949e", "white on #161b22"),
 }
 
 
@@ -67,9 +59,14 @@ class TranscriptView(RichLog):
         """Redraw the transcript from display state."""
         self.clear()
         for item in state.items:
-            self.write(render_chat_item(item))
+            self.write(render_chat_item(item), expand=True, shrink=True, scroll_end=True)
         if state.assistant_buffer:
-            self.write(render_chat_item(ChatItem(role="assistant", text=state.assistant_buffer)))
+            self.write(
+                render_chat_item(ChatItem(role="assistant", text=state.assistant_buffer)),
+                expand=True,
+                shrink=True,
+                scroll_end=True,
+            )
 
 
 def render_session_sidebar(session: SessionSummarySource) -> RenderableType:
@@ -97,14 +94,17 @@ def render_session_sidebar(session: SessionSummarySource) -> RenderableType:
     )
 
 
-def render_chat_item(item: ChatItem) -> Text:
-    """Render a chat item as Rich text."""
-    label = _ROLE_LABELS[item.role]
-    style = _ROLE_STYLES[item.role]
-    text = Text()
-    text.append(f"{label}: ", style=style)
-    text.append(item.text, style="white")
-    return text
+def render_chat_item(item: ChatItem) -> Panel:
+    """Render a chat item as a standalone colored transcript block."""
+    border_style, body_style = _ROLE_BLOCK_STYLES[item.role]
+    body = Text(item.text, style=body_style, overflow="fold", no_wrap=False)
+    return Panel(
+        body,
+        border_style=border_style,
+        style=body_style,
+        padding=(0, 1),
+        expand=True,
+    )
 
 
 def render_completion_suggestions(state: CompletionState) -> Text:
