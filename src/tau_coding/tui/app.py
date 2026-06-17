@@ -25,7 +25,12 @@ from tau_coding.tui.adapter import TuiEventAdapter
 from tau_coding.tui.autocomplete import CompletionOption, CompletionState, build_completion_state
 from tau_coding.tui.config import TuiKeybindings, TuiSettings, TuiTheme, load_tui_settings
 from tau_coding.tui.state import TuiState
-from tau_coding.tui.widgets import SessionSidebar, TranscriptView, render_completion_suggestions
+from tau_coding.tui.widgets import (
+    CompactSessionInfo,
+    SessionSidebar,
+    TranscriptView,
+    render_completion_suggestions,
+)
 
 type BindingEntry = Binding | tuple[str, str] | tuple[str, str, str]
 SIDEBAR_MIN_WIDTH = 96
@@ -262,6 +267,18 @@ class TauTuiApp(App[None]):
         border: tall $tau-prompt-border;
     }
 
+    #compact-session-info {
+        display: none;
+        height: 1;
+        margin: 0 1 1 1;
+        padding: 0 1;
+        color: $tau-muted-text;
+    }
+
+    TauTuiApp.-hide-sidebar #compact-session-info {
+        display: block;
+    }
+
     #autocomplete {
         height: auto;
         max-height: 18;
@@ -382,6 +399,7 @@ class TauTuiApp(App[None]):
                     id="prompt",
                     tui_keybindings=self.tui_settings.keybindings,
                 )
+                yield CompactSessionInfo(id="compact-session-info")
                 yield Static("", id="autocomplete")
         yield Footer()
 
@@ -561,6 +579,8 @@ class TauTuiApp(App[None]):
         theme = self.tui_settings.resolved_theme
         sidebar = self.query_one("#sidebar", SessionSidebar)
         sidebar.update_from_session(self.session, theme=theme)
+        compact_info = self.query_one("#compact-session-info", CompactSessionInfo)
+        compact_info.update_from_session(self.session, theme=theme)
         transcript = self.query_one("#transcript", TranscriptView)
         transcript.update_from_state(self.state, theme=theme)
         status = self.query_one("#status", Static)

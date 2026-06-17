@@ -3,6 +3,7 @@
 from collections.abc import Sequence
 from pathlib import Path
 from re import search
+from subprocess import TimeoutExpired, run
 from typing import Any, Protocol
 
 from rich import box
@@ -51,6 +52,12 @@ class SessionSummarySource(Protocol):
     @property
     def prompt_templates(self) -> Sequence[PromptTemplate]: ...
 
+    @property
+    def context_token_estimate(self) -> int: ...
+
+    @property
+    def auto_compact_token_threshold(self) -> int | None: ...
+
 
 class SessionSidebar(Static):
     """Compact sidebar with current session metadata."""
@@ -63,6 +70,19 @@ class SessionSidebar(Static):
     ) -> None:
         """Redraw the sidebar from current session metadata."""
         self.update(render_session_sidebar(session, theme=theme))
+
+
+class CompactSessionInfo(Static):
+    """Single-line session metadata for narrow TUI layouts."""
+
+    def update_from_session(
+        self,
+        session: SessionSummarySource,
+        *,
+        theme: TuiTheme = TAU_DARK_THEME,
+    ) -> None:
+        """Redraw compact session metadata."""
+        self.update(render_compact_session_info(session, theme=theme))
 
 
 class TranscriptView(RichLog):
@@ -132,9 +152,11 @@ def render_session_sidebar(
     metadata = Table.grid(padding=(0, 1))
     metadata.add_column(style=theme.completion_description, no_wrap=True)
     metadata.add_column(style=theme.prompt_text)
-    metadata.add_row("provider", session.provider_name)
+    metadata.add_row("context", _context_percentage(session))
     metadata.add_row("model", session.model)
-    metadata.add_row("cwd", _short_path(session.cwd))
+    metadata.add_row("thinking", _thinking_level(session))
+    metadata.add_row("location", _short_path(session.cwd))
+    metadata.add_row("branch", _git_branch(session.cwd))
     metadata.add_row("tools", str(len(session.tools)))
     metadata.add_row("skills", str(len(session.skills)))
 
@@ -182,6 +204,28 @@ def render_session_sidebar(
             padding=(0, 1),
         ),
     )
+
+
+def render_compact_session_info(
+    session: SessionSummarySource,
+    *,
+    theme: TuiTheme = TAU_DARK_THEME,
+) -> Text:
+    """Render the session facts needed when the sidebar is hidden."""
+    facts = (
+        ("context", _context_percentage(session)),
+        ("model", session.model),
+        ("thinking", _thinking_level(session)),
+        ("location", _short_path(session.cwd)),
+        ("branch", _git_branch(session.cwd)),
+    )
+    text = Text(style=theme.muted_text)
+    for index, (label, value) in enumerate(facts):
+        if index:
+            text.append("  ")
+        text.append(f"{label} ", style=theme.completion_description)
+        text.append(value, style=theme.prompt_text)
+    return text
 
 
 def render_chat_item(
@@ -322,6 +366,39 @@ def _append_plain(
 
 def _plain_text(text: str, *, body_style: str) -> Text:
     return Text(text, style=body_style, overflow="fold", no_wrap=False)
+
+
+def _context_percentage(session: SessionSummarySource) -> str:
+    threshold = session.auto_compact_token_threshold
+    if threshold is None or threshold <= 0:
+        return "--"
+    percentage = min(round((session.context_token_estimate / threshold) * 100), 999)
+    return f"{percentage}%"
+
+
+def _thinking_level(session: SessionSummarySource) -> str:
+    state = getattr(session, "state", None)
+    thinking_level = getattr(state, "thinking_level", None)
+    return str(thinking_level) if thinking_level else "--"
+
+
+def _git_branch(cwd: Path) -> str:
+    try:
+        result = run(
+            ["git", "-C", str(cwd), "branch", "--show-current"],
+            capture_output=True,
+            check=False,
+            text=True,
+            timeout=0.5,
+        )
+    except OSError:
+        return "--"
+    except TimeoutExpired:
+        return "--"
+    branch = result.stdout.strip()
+    if branch:
+        return branch
+    return "--"
 
 
 def _looks_like_markdown(text: str) -> bool:

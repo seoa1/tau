@@ -26,7 +26,15 @@ from tau_coding.tui import app as tui_app
 from tau_coding.tui.app import CommandOutputScreen, SessionPickerScreen, TauTuiApp
 from tau_coding.tui.config import HIGH_CONTRAST_THEME, TuiKeybindings, TuiSettings
 from tau_coding.tui.state import ChatItem
-from tau_coding.tui.widgets import render_chat_item, render_session_sidebar
+from tau_coding.tui.widgets import (
+    render_chat_item,
+    render_compact_session_info,
+    render_session_sidebar,
+)
+
+
+class FakeSessionState:
+    thinking_level = "medium"
 
 
 class FakeSession:
@@ -45,7 +53,8 @@ class FakeSession:
             ProjectContextFile(path=str(self.cwd / "AGENTS.md"), content="Follow rules."),
         )
         self.context_token_estimate = 123
-        self.auto_compact_token_threshold = None
+        self.auto_compact_token_threshold = 1000
+        self.state = FakeSessionState()
         self.resource_diagnostics = ()
         self.session_manager = None
         self.compact_summaries: list[str] = []
@@ -90,7 +99,14 @@ def test_session_sidebar_renders_session_metadata() -> None:
     output = console.export_text()
     assert "_______" in output
     assert "session" in output
+    assert "context" in output
+    assert "12%" in output
     assert "fake-model" in output
+    assert "thinking" in output
+    assert "medium" in output
+    assert "location" in output
+    assert "/workspace/project" in output
+    assert "branch" in output
     assert "tools" in output
     assert "read" in output
     assert "skills" in output
@@ -104,6 +120,19 @@ def test_session_sidebar_uses_square_muted_panels() -> None:
     assert len(panels) == 4
     assert all(renderable.box == box.SQUARE for renderable in panels)
     assert {str(renderable.border_style) for renderable in panels} == {"#141922"}
+
+
+def test_compact_session_info_renders_sidebar_facts() -> None:
+    console = Console(record=True, width=120)
+
+    console.print(render_compact_session_info(FakeSession()))
+
+    output = console.export_text()
+    assert "context 12%" in output
+    assert "model fake-model" in output
+    assert "thinking medium" in output
+    assert "location /workspace/project" in output
+    assert "branch --" in output
 
 
 def test_chat_items_render_as_unlabeled_blocks() -> None:
@@ -232,7 +261,9 @@ async def test_tui_sidebar_is_visible_on_medium_windows() -> None:
 
     async with app.run_test(size=(120, 30)):
         sidebar = app.query_one("#sidebar")
+        compact_info = app.query_one("#compact-session-info")
         assert sidebar.display is True
+        assert compact_info.display is False
         assert not app.has_class("-hide-sidebar")
 
 
@@ -242,7 +273,9 @@ async def test_tui_sidebar_hides_on_narrow_windows() -> None:
 
     async with app.run_test(size=(80, 30)):
         sidebar = app.query_one("#sidebar")
+        compact_info = app.query_one("#compact-session-info")
         assert sidebar.display is False
+        assert compact_info.display is True
         assert app.has_class("-hide-sidebar")
 
 
@@ -252,7 +285,9 @@ async def test_tui_sidebar_hides_on_short_windows() -> None:
 
     async with app.run_test(size=(120, 18)):
         sidebar = app.query_one("#sidebar")
+        compact_info = app.query_one("#compact-session-info")
         assert sidebar.display is False
+        assert compact_info.display is True
         assert app.has_class("-hide-sidebar")
 
 
@@ -262,19 +297,24 @@ async def test_tui_sidebar_visibility_updates_on_resize() -> None:
 
     async with app.run_test(size=(120, 30)) as pilot:
         sidebar = app.query_one("#sidebar")
+        compact_info = app.query_one("#compact-session-info")
         assert sidebar.display is True
+        assert compact_info.display is False
 
         await pilot.resize_terminal(width=80, height=30)
         await pilot.pause()
         assert sidebar.display is False
+        assert compact_info.display is True
 
         await pilot.resize_terminal(width=120, height=18)
         await pilot.pause()
         assert sidebar.display is False
+        assert compact_info.display is True
 
         await pilot.resize_terminal(width=120, height=30)
         await pilot.pause()
         assert sidebar.display is True
+        assert compact_info.display is False
 
 
 @pytest.mark.anyio
