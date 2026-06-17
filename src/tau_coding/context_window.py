@@ -6,6 +6,7 @@ from tau_agent.tools import AgentTool
 CHARS_PER_TOKEN = 4
 MESSAGE_OVERHEAD_TOKENS = 4
 TOOL_OVERHEAD_TOKENS = 16
+SUMMARY_MESSAGE_CHAR_LIMIT = 500
 
 
 def estimate_text_tokens(text: str) -> int:
@@ -60,3 +61,35 @@ def estimate_context_tokens(
         + sum(estimate_message_tokens(message) for message in messages)
         + sum(estimate_tool_tokens(tool) for tool in tools)
     )
+
+
+def summarize_messages_for_compaction(messages: tuple[AgentMessage, ...]) -> str:
+    """Build a deterministic compact summary from provider-neutral messages."""
+    if not messages:
+        return "No prior messages."
+    lines = [f"Automatically compacted {len(messages)} prior message(s)."]
+    for index, message in enumerate(messages, start=1):
+        lines.append(f"{index}. {message.role}: {_message_text(message)}")
+    return "\n".join(lines)
+
+
+def _message_text(message: AgentMessage) -> str:
+    match message.role:
+        case "user":
+            return _truncate_summary_text(message.content)
+        case "assistant":
+            suffix = ""
+            if message.tool_calls:
+                names = ", ".join(call.name for call in message.tool_calls)
+                suffix = f" [tool calls: {names}]"
+            return _truncate_summary_text(f"{message.content}{suffix}")
+        case "tool":
+            prefix = f"{message.name} {'ok' if message.ok else 'failed'}: "
+            return _truncate_summary_text(f"{prefix}{message.content}")
+
+
+def _truncate_summary_text(text: str) -> str:
+    collapsed = " ".join(text.split())
+    if len(collapsed) <= SUMMARY_MESSAGE_CHAR_LIMIT:
+        return collapsed
+    return collapsed[: SUMMARY_MESSAGE_CHAR_LIMIT - 3].rstrip() + "..."

@@ -316,6 +316,7 @@ async def run_tui_app(
     session_id: str | None = None,
     new_session: bool = False,
     provider_name: str | None = None,
+    auto_compact_token_threshold: int | None = None,
     session_manager: SessionManager | None = None,
 ) -> None:
     """Create the default provider/session and run the Textual app."""
@@ -350,6 +351,7 @@ async def run_tui_app(
                 session_manager=manager,
                 provider_name=selection.provider.name,
                 provider_settings=provider_settings,
+                auto_compact_token_threshold=auto_compact_token_threshold,
             )
         )
         app = TauTuiApp(session)

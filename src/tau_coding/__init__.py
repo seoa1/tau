@@ -15,6 +15,7 @@ from tau_coding.context_window import (
     estimate_message_tokens,
     estimate_text_tokens,
     estimate_tool_tokens,
+    summarize_messages_for_compaction,
 )
 from tau_coding.paths import TauPaths
 from tau_coding.prompt_templates import (
@@ -137,6 +138,7 @@ __all__ = [
     "estimate_message_tokens",
     "estimate_text_tokens",
     "estimate_tool_tokens",
+    "summarize_messages_for_compaction",
     "expand_skill_command",
     "format_available_tools",
     "format_guidelines",

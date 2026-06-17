@@ -439,6 +439,50 @@ async def test_session_compact_persists_summary_and_rebuilds_context(tmp_path: P
 
 
 @pytest.mark.anyio
+async def test_session_auto_compacts_before_prompt_when_threshold_is_exceeded(
+    tmp_path: Path,
+) -> None:
+    storage = JsonlSessionStorage(tmp_path / "session.jsonl")
+    provider = FakeProvider(
+        [
+            [
+                ProviderResponseStartEvent(model="fake"),
+                ProviderResponseEndEvent(message=AssistantMessage(content="First answer")),
+            ],
+            [
+                ProviderResponseStartEvent(model="fake"),
+                ProviderResponseEndEvent(message=AssistantMessage(content="Second answer")),
+            ],
+        ]
+    )
+    session = await CodingSession.load(
+        CodingSessionConfig(
+            provider=provider,
+            model="fake",
+            system="You are Tau.",
+            storage=storage,
+            cwd=tmp_path,
+            auto_compact_token_threshold=1,
+        )
+    )
+    _first_events = await _collect_session_events(session.prompt("Explain sessions."))
+
+    _second_events = await _collect_session_events(session.prompt("Continue."))
+
+    entries = await storage.read_all()
+    compactions = [entry for entry in entries if entry.type == "compaction"]
+
+    assert len(compactions) == 1
+    assert "Automatically compacted 2 prior message(s)." in compactions[0].summary
+    assert "user: Explain sessions." in compactions[0].summary
+    assert "assistant: First answer" in compactions[0].summary
+    assert provider.calls[1][2] == [
+        UserMessage(content=f"Previous conversation summary:\n{compactions[0].summary}"),
+        UserMessage(content="Continue."),
+    ]
+
+
+@pytest.mark.anyio
 async def test_session_switches_configured_provider(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:

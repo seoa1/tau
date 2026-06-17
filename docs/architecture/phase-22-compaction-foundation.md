@@ -61,8 +61,18 @@ provider-specific tokenizer. `/status` surfaces the current estimate as:
 Estimated context tokens: <count>
 ```
 
-This gives future automatic compaction thresholds a stable application-layer
-primitive without adding tokenizer policy to `tau_agent`.
+This gives automatic compaction thresholds a stable application-layer primitive
+without adding tokenizer policy to `tau_agent`.
+
+Tau also supports an opt-in TUI threshold:
+
+```bash
+tau --auto-compact-threshold 100000
+```
+
+When the active context estimate exceeds this threshold before a new prompt,
+Tau appends a `CompactionEntry` automatically and rebuilds the in-memory
+transcript before sending the prompt to the provider.
 
 ## Manual Compaction
 
@@ -76,8 +86,10 @@ The command appends a `CompactionEntry`, appends a new leaf pointer, replays the
 session to rebuild active context, and replaces the in-memory harness transcript
 for future turns.
 
-The command deliberately requires a user-provided summary. Model-generated
-summaries and automatic compaction thresholds are separate future steps.
+The command deliberately requires a user-provided summary.
+
+Automatic compaction currently uses a deterministic extractive summary of prior
+messages. Model-generated summaries remain future work.
 
 ## Boundary
 
@@ -85,8 +97,8 @@ This foundation is in `tau_agent` because replaying session entries is a
 portable harness concern. It does not know about slash commands, Textual, Rich,
 Tau home paths, token thresholds, or which model creates a summary.
 
-Token estimation and command UX live in `tau_coding`. Automatic thresholds and
-model-generated summaries belong in later `tau_coding` work.
+Token estimation and command UX live in `tau_coding`. Model-generated summaries
+belong in later `tau_coding` work.
 
 ## Tests
 
@@ -109,3 +121,4 @@ The tests verify:
 - `/status` includes an estimated context token count
 - `/compact <summary>` requests compaction
 - manual compaction persists entries and rebuilds future-turn context
+- opt-in automatic compaction runs before a prompt when the threshold is exceeded

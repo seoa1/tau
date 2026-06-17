@@ -113,6 +113,13 @@ def main(
         bool,
         typer.Option("--new-session", help="Create a new session in TUI mode (default)."),
     ] = False,
+    auto_compact_threshold: Annotated[
+        int | None,
+        typer.Option(
+            "--auto-compact-threshold",
+            help="Automatically compact TUI context above this rough token estimate.",
+        ),
+    ] = None,
     version: Annotated[
         bool,
         typer.Option("--version", help="Show Tau's version and exit."),
@@ -146,7 +153,15 @@ def main(
 
     if prompt_option is None and prompt_arg is None:
         try:
-            anyio.run(run_openai_tui, model, cwd or Path.cwd(), resume, new_session, provider)
+            anyio.run(
+                run_openai_tui,
+                model,
+                cwd or Path.cwd(),
+                resume,
+                new_session,
+                provider,
+                auto_compact_threshold,
+            )
         except RuntimeError as exc:
             raise typer.BadParameter(str(exc)) from exc
         raise typer.Exit()
@@ -169,6 +184,7 @@ async def run_openai_tui(
     session_id: str | None = None,
     new_session: bool = False,
     provider_name: str | None = None,
+    auto_compact_token_threshold: int | None = None,
 ) -> None:
     """Run the Textual TUI with the default OpenAI-compatible provider."""
     await run_tui_app(
@@ -177,6 +193,7 @@ async def run_openai_tui(
         session_id=session_id,
         new_session=new_session,
         provider_name=provider_name,
+        auto_compact_token_threshold=auto_compact_token_threshold,
     )
 
 

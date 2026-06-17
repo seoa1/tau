@@ -20,7 +20,7 @@ from tau_agent.tools import AgentTool
 from tau_ai import ModelProvider, OpenAICompatibleProvider
 from tau_coding.commands import CommandRegistry, CommandResult, create_default_command_registry
 from tau_coding.context import discover_project_context_with_diagnostics
-from tau_coding.context_window import estimate_context_tokens
+from tau_coding.context_window import estimate_context_tokens, summarize_messages_for_compaction
 from tau_coding.paths import TauPaths
 from tau_coding.prompt_templates import (
     PromptTemplate,
@@ -77,6 +77,7 @@ class CodingSessionConfig:
     command_registry: CommandRegistry | None = None
     provider_name: str = "openai"
     provider_settings: ProviderSettings | None = None
+    auto_compact_token_threshold: int | None = None
 
 
 class CodingSession:
@@ -112,6 +113,7 @@ class CodingSession:
         self._provider_name = config.provider_name
         self._provider_settings = config.provider_settings
         self._resource_paths = resource_paths_with_cwd(config.resource_paths, config.cwd)
+        self._auto_compact_token_threshold = config.auto_compact_token_threshold
         self._owned_providers: list[OpenAICompatibleProvider] = []
 
     @classmethod
@@ -247,6 +249,11 @@ class CodingSession:
         )
 
     @property
+    def auto_compact_token_threshold(self) -> int | None:
+        """Return the configured automatic compaction threshold, if any."""
+        return self._auto_compact_token_threshold
+
+    @property
     def command_registry(self) -> CommandRegistry:
         """Return the slash-command registry used by this session."""
         return self._command_registry
@@ -323,25 +330,7 @@ class CodingSession:
         normalized_summary = summary.strip()
         if not normalized_summary:
             raise ValueError("Compaction summary cannot be empty")
-        if not self._state.context_entry_ids:
-            raise ValueError("No active context messages to compact")
-
-        compaction = CompactionEntry(
-            parent_id=self._last_parent_id,
-            summary=normalized_summary,
-            replaces_entry_ids=list(self._state.context_entry_ids),
-        )
-        await self._config.storage.append(compaction)
-        leaf = LeafEntry(parent_id=compaction.id, entry_id=compaction.id)
-        await self._config.storage.append(leaf)
-        self._last_parent_id = compaction.id
-
-        entries = await self._config.storage.read_all()
-        self._state = SessionState.from_entries(entries, leaf_id=compaction.id)
-        self._harness.replace_messages(self._state.messages)
-        if self._config.session_id is not None and self._config.session_manager is not None:
-            self._config.session_manager.touch_session(self._config.session_id, model=self.model)
-
+        compaction = await self._append_compaction(normalized_summary)
         return f"Compacted {len(compaction.replaces_entry_ids)} context entries."
 
     async def aclose(self) -> None:
@@ -365,6 +354,7 @@ class CodingSession:
 
     async def prompt(self, content: str) -> AsyncIterator[AgentEvent]:
         """Append a user prompt, run the agent, and persist new messages."""
+        await self._maybe_auto_compact()
         try:
             expanded_content = self.expand_prompt_text(content)
         except ResourceError:
@@ -398,6 +388,38 @@ class CodingSession:
         self._state = SessionState.from_entries(entries)
         if self._config.session_id is not None and self._config.session_manager is not None:
             self._config.session_manager.touch_session(self._config.session_id, model=self.model)
+
+    async def _maybe_auto_compact(self) -> None:
+        threshold = self._auto_compact_token_threshold
+        if threshold is None or threshold <= 0:
+            return
+        if len(self._state.context_entry_ids) < 2:
+            return
+        if self.context_token_estimate <= threshold:
+            return
+        summary = summarize_messages_for_compaction(self._state.messages)
+        await self._append_compaction(summary)
+
+    async def _append_compaction(self, summary: str) -> CompactionEntry:
+        if not self._state.context_entry_ids:
+            raise ValueError("No active context messages to compact")
+
+        compaction = CompactionEntry(
+            parent_id=self._last_parent_id,
+            summary=summary,
+            replaces_entry_ids=list(self._state.context_entry_ids),
+        )
+        await self._config.storage.append(compaction)
+        leaf = LeafEntry(parent_id=compaction.id, entry_id=compaction.id)
+        await self._config.storage.append(leaf)
+        self._last_parent_id = compaction.id
+
+        entries = await self._config.storage.read_all()
+        self._state = SessionState.from_entries(entries, leaf_id=compaction.id)
+        self._harness.replace_messages(self._state.messages)
+        if self._config.session_id is not None and self._config.session_manager is not None:
+            self._config.session_manager.touch_session(self._config.session_id, model=self.model)
+        return compaction
 
 
 def _last_parent_id_from_state(state: SessionState) -> str | None:

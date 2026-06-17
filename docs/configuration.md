@@ -157,3 +157,27 @@ Useful TUI commands:
 /context
 /reload
 ```
+
+## Context Management
+
+`/status` shows a rough context-size estimate:
+
+```text
+Estimated context tokens: <count>
+```
+
+Manual compaction is available inside the TUI:
+
+```text
+/compact <summary>
+```
+
+Tau can also compact automatically before a new TUI turn when the estimated
+context exceeds an opt-in threshold:
+
+```bash
+tau --auto-compact-threshold 100000
+```
+
+Automatic compaction currently uses a deterministic extractive summary of prior
+messages. It does not call a model to generate the summary yet.

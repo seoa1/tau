@@ -31,7 +31,7 @@ def test_version_command() -> None:
 def test_cli_without_prompt_invokes_tui_runner(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    calls: list[tuple[str | None, Path, str | None, bool, str | None]] = []
+    calls: list[tuple[str | None, Path, str | None, bool, str | None, int | None]] = []
 
     async def fake_run_openai_tui(
         model: str | None,
@@ -39,8 +39,11 @@ def test_cli_without_prompt_invokes_tui_runner(
         session_id: str | None,
         new_session: bool,
         provider_name: str | None,
+        auto_compact_token_threshold: int | None,
     ) -> None:
-        calls.append((model, cwd, session_id, new_session, provider_name))
+        calls.append(
+            (model, cwd, session_id, new_session, provider_name, auto_compact_token_threshold)
+        )
 
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(cli, "run_openai_tui", fake_run_openai_tui)
@@ -48,7 +51,7 @@ def test_cli_without_prompt_invokes_tui_runner(
     result = CliRunner().invoke(app, [])
 
     assert result.exit_code == 0
-    assert calls == [(None, tmp_path, None, False, None)]
+    assert calls == [(None, tmp_path, None, False, None, None)]
 
 
 @pytest.mark.anyio
@@ -212,7 +215,7 @@ def test_cli_exits_nonzero_when_print_mode_fails(monkeypatch: pytest.MonkeyPatch
 def test_default_tui_invokes_tui_runner_with_flags(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    calls: list[tuple[str | None, Path, str | None, bool, str | None]] = []
+    calls: list[tuple[str | None, Path, str | None, bool, str | None, int | None]] = []
 
     async def fake_run_openai_tui(
         model: str | None,
@@ -220,8 +223,11 @@ def test_default_tui_invokes_tui_runner_with_flags(
         session_id: str | None,
         new_session: bool,
         provider_name: str | None,
+        auto_compact_token_threshold: int | None,
     ) -> None:
-        calls.append((model, cwd, session_id, new_session, provider_name))
+        calls.append(
+            (model, cwd, session_id, new_session, provider_name, auto_compact_token_threshold)
+        )
 
     monkeypatch.setattr(cli, "run_openai_tui", fake_run_openai_tui)
 
@@ -236,11 +242,13 @@ def test_default_tui_invokes_tui_runner_with_flags(
             "local",
             "--resume",
             "session-1",
+            "--auto-compact-threshold",
+            "1000",
         ],
     )
 
     assert result.exit_code == 0
-    assert calls == [("fake", tmp_path, "session-1", False, "local")]
+    assert calls == [("fake", tmp_path, "session-1", False, "local", 1000)]
 
 
 def test_default_tui_rejects_resume_with_new_session(
@@ -252,6 +260,7 @@ def test_default_tui_rejects_resume_with_new_session(
         session_id: str | None,
         new_session: bool,
         provider_name: str | None,
+        auto_compact_token_threshold: int | None,
     ) -> None:
         raise RuntimeError("--resume and --new-session cannot be used together")
 

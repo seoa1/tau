@@ -5,6 +5,7 @@ from tau_coding.context_window import (
     estimate_context_tokens,
     estimate_message_tokens,
     estimate_text_tokens,
+    summarize_messages_for_compaction,
 )
 from tau_coding.tools import create_coding_tools
 
@@ -42,3 +43,24 @@ def test_context_token_estimate_includes_system_messages_and_tools(tmp_path: Pat
     )
 
     assert estimate > estimate_text_tokens("You are Tau.hellohi")
+
+
+def test_summarize_messages_for_compaction_is_deterministic() -> None:
+    tool_call = ToolCall(id="call-1", name="read", arguments={"path": "README.md"})
+
+    summary = summarize_messages_for_compaction(
+        (
+            UserMessage(content="Read README.md"),
+            AssistantMessage(content="I'll inspect it.", tool_calls=[tool_call]),
+            ToolResultMessage(tool_call_id="call-1", name="read", content="README contents"),
+        )
+    )
+
+    assert summary == "\n".join(
+        [
+            "Automatically compacted 3 prior message(s).",
+            "1. user: Read README.md",
+            "2. assistant: I'll inspect it. [tool calls: read]",
+            "3. tool: read ok: README contents",
+        ]
+    )

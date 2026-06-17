@@ -41,6 +41,7 @@ class FakeSession:
             ProjectContextFile(path=str(self.cwd / "AGENTS.md"), content="Follow rules."),
         )
         self.context_token_estimate = 123
+        self.auto_compact_token_threshold = None
         self.resource_diagnostics = ()
         self.compact_summaries: list[str] = []
 
@@ -271,6 +272,7 @@ async def test_run_tui_app_creates_new_session_by_default(
         @classmethod
         async def load(cls, config: object) -> str:
             assert config.provider_name == "local"  # type: ignore[attr-defined]
+            assert config.auto_compact_token_threshold == 1000  # type: ignore[attr-defined]
             calls.append("load")
             return "session"
 
@@ -307,6 +309,7 @@ async def test_run_tui_app_creates_new_session_by_default(
         model=None,
         cwd=tmp_path,
         provider_name="local",
+        auto_compact_token_threshold=1000,
         session_manager=FakeManager(),
     )
 
