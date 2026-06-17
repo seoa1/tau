@@ -172,6 +172,40 @@ async def test_tool_results_are_persisted(tmp_path: Path) -> None:
 
 
 @pytest.mark.anyio
+async def test_session_builds_system_prompt_when_system_is_omitted(tmp_path: Path) -> None:
+    resource_root = tmp_path / "resources"
+    skills_dir = resource_root / "skills"
+    skills_dir.mkdir(parents=True)
+    (skills_dir / "testing.md").write_text(
+        "---\ndescription: Test code\n---\n# Testing",
+        encoding="utf-8",
+    )
+    storage = JsonlSessionStorage(tmp_path / "session.jsonl")
+    provider = FakeProvider(
+        [
+            [
+                ProviderResponseStartEvent(model="fake"),
+                ProviderResponseEndEvent(message=AssistantMessage(content="Done")),
+            ]
+        ]
+    )
+    config = CodingSessionConfig(
+        provider=provider,
+        model="fake",
+        storage=storage,
+        cwd=tmp_path,
+        resource_paths=TauResourcePaths(root=resource_root),
+    )
+    session = await CodingSession.load(config)
+
+    _events = await _collect_session_events(session.prompt("Hello"))
+
+    assert "Available tools:\n- read: Read file contents" in provider.calls[0][1]
+    assert "<available_skills>" in provider.calls[0][1]
+    assert "<name>testing</name>" in provider.calls[0][1]
+
+
+@pytest.mark.anyio
 async def test_session_loads_and_expands_skills(tmp_path: Path) -> None:
     resource_root = tmp_path / "resources"
     skills_dir = resource_root / "skills"

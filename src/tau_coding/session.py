@@ -20,6 +20,11 @@ from tau_ai import ModelProvider
 from tau_coding.prompt_templates import PromptTemplate, load_prompt_templates
 from tau_coding.resources import ResourceError, TauResourcePaths
 from tau_coding.skills import Skill, expand_skill_command, load_skills
+from tau_coding.system_prompt import (
+    BuildSystemPromptOptions,
+    ProjectContextFile,
+    build_system_prompt,
+)
 from tau_coding.tools import create_coding_tools
 
 
@@ -29,9 +34,12 @@ class CodingSessionConfig:
 
     provider: ModelProvider
     model: str
-    system: str
     storage: SessionStorage
     cwd: Path
+    system: str | None = None
+    custom_system_prompt: str | None = None
+    append_system_prompt: str | None = None
+    context_files: tuple[ProjectContextFile, ...] = ()
     tools: list[AgentTool] | None = None
     resource_paths: TauResourcePaths | None = None
 
@@ -91,11 +99,21 @@ class CodingSession:
         resource_paths = config.resource_paths or TauResourcePaths()
         skills = tuple(load_skills(resource_paths))
         prompt_templates = tuple(load_prompt_templates(resource_paths))
+        system = config.system or build_system_prompt(
+            BuildSystemPromptOptions(
+                cwd=config.cwd,
+                tools=tools,
+                skills=skills,
+                custom_prompt=config.custom_system_prompt,
+                append_system_prompt=config.append_system_prompt,
+                context_files=config.context_files,
+            )
+        )
         harness = AgentHarness(
             AgentHarnessConfig(
                 provider=config.provider,
                 model=state.model or config.model,
-                system=config.system,
+                system=system,
                 tools=tools,
             ),
             messages=state.messages,
