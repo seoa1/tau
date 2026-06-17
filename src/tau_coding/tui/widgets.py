@@ -13,6 +13,7 @@ from textual.widgets import RichLog, Static
 from tau_agent.tools import AgentTool
 from tau_coding.prompt_templates import PromptTemplate
 from tau_coding.skills import Skill
+from tau_coding.tui.autocomplete import CompletionState
 from tau_coding.tui.state import ChatItem, TuiState
 
 _ROLE_LABELS = {
@@ -103,6 +104,24 @@ def render_chat_item(item: ChatItem) -> Text:
     text = Text()
     text.append(f"{label}: ", style=style)
     text.append(item.text, style="white")
+    return text
+
+
+def render_completion_suggestions(state: CompletionState) -> Text:
+    """Render prompt completion suggestions."""
+    text = Text()
+    for index, item in enumerate(state.items[:6]):
+        if index:
+            text.append("\n")
+        selected = index == state.selected_index
+        prefix = "› " if selected else "  "
+        style = "bold white on #238636" if selected else "white"
+        description_style = "white on #238636" if selected else "bright_black"
+        text.append(prefix, style=style)
+        text.append(item.display, style=style)
+        if item.description:
+            text.append("  ")
+            text.append(item.description, style=description_style)
     return text
 
 

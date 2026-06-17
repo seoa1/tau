@@ -183,6 +183,11 @@ class CodingSession:
         return self._prompt_templates
 
     @property
+    def command_registry(self) -> CommandRegistry:
+        """Return the slash-command registry used by this session."""
+        return self._command_registry
+
+    @property
     def resource_diagnostics(self) -> tuple[ResourceDiagnostic, ...]:
         """Return non-fatal resource discovery diagnostics."""
         return self._resource_diagnostics

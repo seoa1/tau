@@ -1,18 +1,78 @@
 """Minimal Textual app for Tau coding sessions."""
 
 from pathlib import Path
+from typing import Protocol, cast
 
 from textual.app import App, ComposeResult
+from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
+from textual.events import Key
 from textual.widgets import Footer, Header, Input, Static
 from textual.worker import Worker
 
 from tau_ai import OpenAICompatibleProvider, openai_compatible_config_from_env
+from tau_coding.commands import CommandRegistry, create_default_command_registry
 from tau_coding.session import CodingSession, CodingSessionConfig, jsonl_session_storage
 from tau_coding.session_manager import SessionManager
 from tau_coding.tui.adapter import TuiEventAdapter
+from tau_coding.tui.autocomplete import CompletionState, build_completion_state
 from tau_coding.tui.state import TuiState
-from tau_coding.tui.widgets import SessionSidebar, TranscriptView
+from tau_coding.tui.widgets import SessionSidebar, TranscriptView, render_completion_suggestions
+
+
+class CompletionActionTarget(Protocol):
+    """App actions used by the prompt input completion bindings."""
+
+    def action_accept_completion(self) -> None: ...
+
+    def action_completion_next(self) -> None: ...
+
+    def action_completion_previous(self) -> None: ...
+
+
+class PromptInput(Input):
+    """Prompt input with completion key bindings."""
+
+    BINDINGS = [
+        Binding("tab", "accept_completion", show=False, priority=True),
+        Binding("down", "completion_next", show=False, priority=True),
+        Binding("up", "completion_previous", show=False, priority=True),
+    ]
+
+    def action_accept_completion(self) -> None:
+        """Accept the selected app-level completion."""
+        self._completion_target().action_accept_completion()
+
+    def action_completion_next(self) -> None:
+        """Select the next app-level completion."""
+        self._completion_target().action_completion_next()
+
+    def action_completion_previous(self) -> None:
+        """Select the previous app-level completion."""
+        self._completion_target().action_completion_previous()
+
+    def action_scroll_down(self) -> None:
+        """Use down arrow for completion selection while focused."""
+        self._completion_target().action_completion_next()
+
+    def action_scroll_up(self) -> None:
+        """Use up arrow for completion selection while focused."""
+        self._completion_target().action_completion_previous()
+
+    def on_key(self, event: Key) -> None:
+        """Route completion keys before default input handling."""
+        if event.key == "tab":
+            event.stop()
+            self._completion_target().action_accept_completion()
+        elif event.key == "down":
+            event.stop()
+            self._completion_target().action_completion_next()
+        elif event.key == "up":
+            event.stop()
+            self._completion_target().action_completion_previous()
+
+    def _completion_target(self) -> CompletionActionTarget:
+        return cast(CompletionActionTarget, self.app)
 
 
 class TauTuiApp(App[None]):
@@ -69,15 +129,27 @@ class TauTuiApp(App[None]):
     }
 
     #prompt {
-        dock: bottom;
         background: #0d1117;
         color: #f0f6fc;
         border: round #238636;
+        margin: 0 1 0 1;
+    }
+
+    #autocomplete {
+        height: auto;
+        max-height: 6;
         margin: 0 1 1 1;
+        padding: 0 1;
+        background: #161b22;
+        color: #e6edf3;
+        border: tall #30363d;
     }
     """
     BINDINGS = [
         ("escape", "cancel", "Cancel"),
+        Binding("tab", "accept_completion", "Complete", priority=True),
+        Binding("down", "completion_next", "Next completion", priority=True),
+        Binding("up", "completion_previous", "Previous completion", priority=True),
         ("ctrl+q", "quit", "Quit"),
     ]
 
@@ -88,6 +160,7 @@ class TauTuiApp(App[None]):
         self.state.load_messages(session.messages)
         self.adapter = TuiEventAdapter(self.state)
         self._prompt_worker: Worker[None] | None = None
+        self._completion_state = CompletionState()
 
     def compose(self) -> ComposeResult:
         """Compose the TUI widgets."""
@@ -97,18 +170,29 @@ class TauTuiApp(App[None]):
             yield SessionSidebar(id="sidebar")
             with Vertical(id="main-pane"):
                 yield TranscriptView(id="transcript", wrap=True, highlight=True, markup=False)
-                yield Input(placeholder="Ask Tau…", id="prompt")
+                yield PromptInput(placeholder="Ask Tau…", id="prompt")
+                yield Static("", id="autocomplete")
         yield Footer()
 
     async def on_mount(self) -> None:
         """Focus the prompt when the app starts."""
         self.query_one(Input).focus()
         self._refresh()
+        self._refresh_completions()
+
+    def on_input_changed(self, event: Input.Changed) -> None:
+        """Update prompt autocomplete when the input value changes."""
+        if event.input.id != "prompt":
+            return
+        self._completion_state = self._build_completion_state(event.value)
+        self._refresh_completions()
 
     async def on_input_submitted(self, event: Input.Submitted) -> None:
         """Handle a submitted prompt or slash command."""
         text = event.value.strip()
         event.input.value = ""
+        self._completion_state = CompletionState()
+        self._refresh_completions()
         if not text:
             return
 
@@ -153,6 +237,31 @@ class TauTuiApp(App[None]):
             self.state.add_item("status", "Nothing to cancel.")
         self._refresh()
 
+    def action_accept_completion(self) -> None:
+        """Accept the currently selected prompt completion."""
+        item = self._completion_state.selected
+        if item is None:
+            return
+        prompt = self.query_one("#prompt", Input)
+        prompt.value = item.apply(prompt.value)
+        prompt.cursor_position = len(prompt.value)
+        self._completion_state = self._build_completion_state(prompt.value)
+        self._refresh_completions()
+
+    def action_completion_next(self) -> None:
+        """Select the next prompt completion."""
+        if not self._completion_state.items:
+            return
+        self._completion_state = self._completion_state.select_next()
+        self._refresh_completions()
+
+    def action_completion_previous(self) -> None:
+        """Select the previous prompt completion."""
+        if not self._completion_state.items:
+            return
+        self._completion_state = self._completion_state.select_previous()
+        self._refresh_completions()
+
     def _refresh(self) -> None:
         sidebar = self.query_one("#sidebar", SessionSidebar)
         sidebar.update_from_session(self.session)
@@ -160,6 +269,27 @@ class TauTuiApp(App[None]):
         transcript.update_from_state(self.state)
         status = self.query_one("#status", Static)
         status.update("Working…" if self.state.running else "Ready")
+
+    def _refresh_completions(self) -> None:
+        suggestions = self.query_one("#autocomplete", Static)
+        suggestions.display = bool(self._completion_state.items)
+        suggestions.update(render_completion_suggestions(self._completion_state))
+
+    def _build_completion_state(self, text: str) -> CompletionState:
+        registry = _session_command_registry(self.session)
+        return build_completion_state(
+            text,
+            command_registry=registry,
+            skills=self.session.skills,
+            prompt_templates=self.session.prompt_templates,
+        )
+
+
+def _session_command_registry(session: CodingSession) -> CommandRegistry:
+    registry = getattr(session, "command_registry", None)
+    if isinstance(registry, CommandRegistry):
+        return registry
+    return create_default_command_registry()
 
 
 async def run_tui_app(

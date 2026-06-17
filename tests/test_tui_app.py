@@ -111,6 +111,54 @@ async def test_tui_app_clear_command_clears_visible_state() -> None:
 
 
 @pytest.mark.anyio
+async def test_tui_app_completes_registered_slash_command() -> None:
+    app = TauTuiApp(FakeSession())
+
+    async with app.run_test() as pilot:
+        prompt = app.query_one("#prompt")
+        prompt.value = "/st"
+        app._completion_state = app._build_completion_state(prompt.value)
+        app._refresh_completions()
+
+        await pilot.press("tab")
+
+        assert prompt.value == "/status"
+
+
+@pytest.mark.anyio
+async def test_tui_app_completes_skill_name() -> None:
+    app = TauTuiApp(FakeSession())
+
+    async with app.run_test() as pilot:
+        prompt = app.query_one("#prompt")
+        prompt.value = "/skill:r"
+        app._completion_state = app._build_completion_state(prompt.value)
+        app._refresh_completions()
+
+        await pilot.press("tab")
+
+        assert prompt.value == "/skill:review"
+
+
+@pytest.mark.anyio
+async def test_tui_app_cycles_completion_selection() -> None:
+    app = TauTuiApp(FakeSession())
+
+    async with app.run_test():
+        prompt = app.query_one("#prompt")
+        prompt.focus()
+        prompt.value = "/s"
+        app._completion_state = app._build_completion_state(prompt.value)
+        app._refresh_completions()
+
+        first = app._completion_state.selected.display if app._completion_state.selected else None
+        prompt.action_scroll_down()
+        second = app._completion_state.selected.display if app._completion_state.selected else None
+
+        assert first != second
+
+
+@pytest.mark.anyio
 async def test_tui_prompt_worker_refreshes_directly() -> None:
     app = TauTuiApp(FakeSession(events=[AgentStartEvent(), AgentEndEvent()]))
     refreshes = 0
