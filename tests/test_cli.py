@@ -395,10 +395,10 @@ def test_providers_command_lists_default_provider(
     result = CliRunner().invoke(app, ["providers"])
 
     assert result.exit_code == 0
-    assert "*\topenai\topenai-compatible\tgpt-4.1-mini" in result.stdout
+    assert "*\topenai\topenai-compatible\tgpt-5.5" in result.stdout
     assert " \tanthropic\tanthropic\tclaude-sonnet-4-6" in result.stdout
-    assert " \topenrouter\topenai-compatible\topenai/gpt-4.1-mini" in result.stdout
-    assert " \thuggingface\topenai-compatible\topenai/gpt-oss-120b" in result.stdout
+    assert " \topenrouter\topenai-compatible\topenai/gpt-5.5" in result.stdout
+    assert " \thuggingface\topenai-compatible\tQwen/Qwen3-Coder" in result.stdout
 
 
 def test_setup_command_writes_provider_settings(

@@ -800,7 +800,7 @@ async def test_tui_login_opens_provider_picker() -> None:
         provider_list = app.screen.query_one("#login-provider-list", ListView)
         labels = [str(item.query_one(Label).render()) for item in provider_list.children]
         assert labels[0] == "OpenAI\n  openai"
-        assert "gpt-4.1-mini" not in "\n".join(labels)
+        assert "gpt-5.5" not in "\n".join(labels)
 
         await pilot.press("down")
         await pilot.press("enter")
@@ -954,7 +954,7 @@ async def test_run_tui_app_opens_when_provider_login_is_missing(
 
     await tui_app.run_tui_app(cwd=tmp_path, model=None, session_manager=FakeManager())
 
-    assert calls == [f"create:{tmp_path}:gpt-4.1-mini", "load:LoginRequiredProvider", "run"]
+    assert calls == [f"create:{tmp_path}:gpt-5.5", "load:LoginRequiredProvider", "run"]
 
 
 @pytest.mark.anyio

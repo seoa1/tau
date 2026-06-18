@@ -19,7 +19,7 @@ from tau_coding.paths import TauPaths
 from tau_coding.provider_catalog import BUILTIN_PROVIDER_CATALOG, ProviderKind
 
 DEFAULT_PROVIDER_NAME = "openai"
-DEFAULT_MODEL = "gpt-4.1-mini"
+DEFAULT_MODEL = "gpt-5.5"
 
 
 class ProviderConfigError(ValueError):
