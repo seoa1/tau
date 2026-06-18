@@ -5,9 +5,11 @@ import pytest
 from tau_coding.paths import TauPaths
 from tau_coding.provider_config import (
     DEFAULT_MODEL,
+    AnthropicProviderConfig,
     OpenAICompatibleProviderConfig,
     ProviderConfigError,
     ProviderSettings,
+    anthropic_config_from_provider,
     load_provider_settings,
     openai_compatible_config_from_provider,
     provider_settings_from_json,
@@ -21,8 +23,16 @@ def test_load_provider_settings_missing_file_uses_openai_default(tmp_path: Path)
     settings = load_provider_settings(TauPaths(home=tmp_path / ".tau"))
 
     assert settings.default_provider == "openai"
-    assert [provider.name for provider in settings.providers] == ["openai"]
+    assert [provider.name for provider in settings.providers] == [
+        "openai",
+        "anthropic",
+        "openrouter",
+        "huggingface",
+    ]
     assert settings.providers[0].default_model == DEFAULT_MODEL
+    assert settings.get_provider("anthropic").api_key_env == "ANTHROPIC_API_KEY"
+    assert settings.get_provider("openrouter").api_key_env == "OPENROUTER_API_KEY"
+    assert settings.get_provider("huggingface").api_key_env == "HF_TOKEN"
 
 
 def test_save_and_load_provider_settings_round_trip(tmp_path: Path) -> None:
@@ -74,7 +84,13 @@ def test_upsert_openai_compatible_provider_replaces_and_sets_default() -> None:
     )
 
     assert updated.default_provider == "local"
-    assert [item.name for item in updated.providers] == ["local", "openai"]
+    assert [item.name for item in updated.providers] == [
+        "anthropic",
+        "huggingface",
+        "local",
+        "openai",
+        "openrouter",
+    ]
     assert replaced.get_provider("local").default_model == "llama"
 
 
@@ -124,6 +140,17 @@ def test_openai_compatible_config_from_provider_uses_configured_env_var(
     assert config.max_retry_delay_seconds == 1.0
 
 
+def test_openai_compatible_config_from_provider_preserves_openai_base_url_env(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setenv("OPENAI_BASE_URL", "https://proxy.example/v1/")
+
+    config = openai_compatible_config_from_provider(OpenAICompatibleProviderConfig(name="openai"))
+
+    assert config.base_url == "https://proxy.example/v1"
+
+
 def test_openai_compatible_config_from_provider_uses_configured_timeout(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -144,6 +171,47 @@ def test_openai_compatible_config_from_provider_uses_configured_timeout(
     assert config.timeout_seconds == 180
     assert config.max_retries == 3
     assert config.max_retry_delay_seconds == 0.25
+
+
+def test_openai_compatible_config_from_provider_uses_stored_credential(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    provider = OpenAICompatibleProviderConfig(
+        name="openrouter",
+        base_url="https://openrouter.ai/api/v1",
+        api_key_env="OPENROUTER_API_KEY",
+        credential_name="openrouter",
+        models=("openai/gpt-4.1-mini",),
+        default_model="openai/gpt-4.1-mini",
+    )
+
+    class FakeCredentials:
+        def get(self, name: str) -> str | None:
+            return "stored-key" if name == "openrouter" else None
+
+    config = openai_compatible_config_from_provider(
+        provider,
+        credential_reader=FakeCredentials(),
+    )
+
+    assert config.api_key == "stored-key"
+
+
+def test_anthropic_config_from_provider_uses_stored_credential(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    provider = AnthropicProviderConfig(credential_name="anthropic")
+
+    class FakeCredentials:
+        def get(self, name: str) -> str | None:
+            return "stored-anthropic-key" if name == "anthropic" else None
+
+    config = anthropic_config_from_provider(provider, credential_reader=FakeCredentials())
+
+    assert config.api_key == "stored-anthropic-key"
+    assert config.base_url == "https://api.anthropic.com/v1"
 
 
 def test_provider_settings_from_json_rejects_invalid_timeout() -> None:

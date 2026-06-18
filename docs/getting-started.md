@@ -47,13 +47,16 @@ tau 0.1.0
 
 ## Configure a Provider
 
-The default provider reads `OPENAI_API_KEY`:
+Tau includes built-in provider entries for OpenAI, Anthropic, OpenRouter, and
+Hugging Face Inference Providers. In the TUI, run `/login` to see the list and
+`/login openai` to save an API key for a provider.
 
-```bash
-export OPENAI_API_KEY="..."
-```
+Provider metadata is written to `~/.tau/providers.json`. API keys saved with
+`/login` are written to `~/.tau/credentials.json` with private file permissions.
+Environment variables such as `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`,
+`OPENROUTER_API_KEY`, and `HF_TOKEN` still work and take precedence.
 
-To add an OpenAI-compatible provider:
+To add a custom OpenAI-compatible provider:
 
 ```bash
 uv run tau --provider local \
@@ -62,9 +65,6 @@ uv run tau --provider local \
   --model qwen \
   setup
 ```
-
-Provider metadata is written to `~/.tau/providers.json`. API keys stay in
-environment variables.
 
 ## Open the TUI
 

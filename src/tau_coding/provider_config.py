@@ -4,17 +4,19 @@ from dataclasses import dataclass, field
 from json import dumps, loads
 from os import environ
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 
 from tau_ai import (
+    DEFAULT_ANTHROPIC_BASE_URL,
     DEFAULT_OPENAI_COMPATIBLE_MAX_RETRIES,
     DEFAULT_OPENAI_COMPATIBLE_MAX_RETRY_DELAY_SECONDS,
     DEFAULT_OPENAI_COMPATIBLE_TIMEOUT_SECONDS,
+    AnthropicConfig,
     OpenAICompatibleConfig,
-    openai_compatible_config_from_env,
 )
 from tau_ai.env import DEFAULT_OPENAI_COMPATIBLE_BASE_URL
 from tau_coding.paths import TauPaths
+from tau_coding.provider_catalog import BUILTIN_PROVIDER_CATALOG, ProviderKind
 
 DEFAULT_PROVIDER_NAME = "openai"
 DEFAULT_MODEL = "gpt-4.1-mini"
@@ -24,6 +26,12 @@ class ProviderConfigError(ValueError):
     """Raised when Tau provider configuration is invalid."""
 
 
+class CredentialReader(Protocol):
+    """Credential lookup used while building runtime provider config."""
+
+    def get(self, name: str) -> str | None: ...
+
+
 @dataclass(frozen=True, slots=True)
 class OpenAICompatibleProviderConfig:
     """Durable settings for one OpenAI-compatible provider."""
@@ -31,6 +39,7 @@ class OpenAICompatibleProviderConfig:
     name: str
     base_url: str = DEFAULT_OPENAI_COMPATIBLE_BASE_URL
     api_key_env: str = "OPENAI_API_KEY"
+    credential_name: str | None = None
     models: tuple[str, ...] = (DEFAULT_MODEL,)
     default_model: str = DEFAULT_MODEL
     timeout_seconds: float = DEFAULT_OPENAI_COMPATIBLE_TIMEOUT_SECONDS
@@ -38,22 +47,11 @@ class OpenAICompatibleProviderConfig:
     max_retry_delay_seconds: float = DEFAULT_OPENAI_COMPATIBLE_MAX_RETRY_DELAY_SECONDS
 
     def __post_init__(self) -> None:
-        if isinstance(self.timeout_seconds, bool) or self.timeout_seconds <= 0:
-            raise ProviderConfigError("Provider timeout_seconds must be greater than 0")
-        if (
-            not isinstance(self.max_retries, int)
-            or isinstance(self.max_retries, bool)
-            or self.max_retries < 0
-        ):
-            raise ProviderConfigError("Provider max_retries must be 0 or greater")
-        if (
-            not isinstance(self.max_retry_delay_seconds, int | float)
-            or isinstance(self.max_retry_delay_seconds, bool)
-            or self.max_retry_delay_seconds < 0
-        ):
-            raise ProviderConfigError(
-                "Provider max_retry_delay_seconds must be 0 or greater"
-            )
+        _validate_provider_numbers(
+            timeout_seconds=self.timeout_seconds,
+            max_retries=self.max_retries,
+            max_retry_delay_seconds=self.max_retry_delay_seconds,
+        )
 
     def to_json(self) -> dict[str, Any]:
         """Serialize this provider config to JSON-compatible data."""
@@ -62,6 +60,7 @@ class OpenAICompatibleProviderConfig:
             "type": "openai-compatible",
             "base_url": self.base_url,
             "api_key_env": self.api_key_env,
+            "credential_name": self.credential_name,
             "models": list(self.models),
             "default_model": self.default_model,
             "timeout_seconds": self.timeout_seconds,
@@ -71,15 +70,55 @@ class OpenAICompatibleProviderConfig:
 
 
 @dataclass(frozen=True, slots=True)
+class AnthropicProviderConfig:
+    """Durable settings for Anthropic's Messages API."""
+
+    name: str = "anthropic"
+    base_url: str = DEFAULT_ANTHROPIC_BASE_URL
+    api_key_env: str = "ANTHROPIC_API_KEY"
+    credential_name: str | None = "anthropic"
+    models: tuple[str, ...] = ("claude-sonnet-4-6",)
+    default_model: str = "claude-sonnet-4-6"
+    timeout_seconds: float = DEFAULT_OPENAI_COMPATIBLE_TIMEOUT_SECONDS
+    max_retries: int = DEFAULT_OPENAI_COMPATIBLE_MAX_RETRIES
+    max_retry_delay_seconds: float = DEFAULT_OPENAI_COMPATIBLE_MAX_RETRY_DELAY_SECONDS
+
+    def __post_init__(self) -> None:
+        _validate_provider_numbers(
+            timeout_seconds=self.timeout_seconds,
+            max_retries=self.max_retries,
+            max_retry_delay_seconds=self.max_retry_delay_seconds,
+        )
+
+    def to_json(self) -> dict[str, Any]:
+        """Serialize this provider config to JSON-compatible data."""
+        return {
+            "name": self.name,
+            "type": "anthropic",
+            "base_url": self.base_url,
+            "api_key_env": self.api_key_env,
+            "credential_name": self.credential_name,
+            "models": list(self.models),
+            "default_model": self.default_model,
+            "timeout_seconds": self.timeout_seconds,
+            "max_retries": self.max_retries,
+            "max_retry_delay_seconds": self.max_retry_delay_seconds,
+        }
+
+
+type ProviderConfig = OpenAICompatibleProviderConfig | AnthropicProviderConfig
+
+
+@dataclass(frozen=True, slots=True)
 class ProviderSettings:
     """Tau provider settings loaded from Tau home."""
 
     default_provider: str = DEFAULT_PROVIDER_NAME
-    providers: tuple[OpenAICompatibleProviderConfig, ...] = field(
-        default_factory=lambda: (default_openai_provider_config(),)
+    providers: tuple[ProviderConfig, ...] = field(
+        default_factory=lambda: builtin_provider_configs()
     )
 
-    def get_provider(self, name: str | None = None) -> OpenAICompatibleProviderConfig:
+    def get_provider(self, name: str | None = None) -> ProviderConfig:
         """Return a configured provider by name."""
         target = name or self.default_provider
         for provider in self.providers:
@@ -99,13 +138,49 @@ class ProviderSettings:
 class ProviderSelection:
     """Resolved provider/model selection for a Tau run."""
 
-    provider: OpenAICompatibleProviderConfig
+    provider: ProviderConfig
     model: str
+
+
+def builtin_provider_configs() -> tuple[ProviderConfig, ...]:
+    """Return Tau's built-in provider configs."""
+    return tuple(
+        provider_config_from_catalog_entry(entry.name)
+        for entry in BUILTIN_PROVIDER_CATALOG
+    )
+
+
+def provider_config_from_catalog_entry(name: str) -> ProviderConfig:
+    """Create a durable provider config from a built-in catalog entry."""
+    for entry in BUILTIN_PROVIDER_CATALOG:
+        if entry.name != name:
+            continue
+        if entry.kind == "anthropic":
+            return AnthropicProviderConfig(
+                name=entry.name,
+                base_url=entry.base_url,
+                api_key_env=entry.api_key_env,
+                credential_name=entry.credential_name,
+                models=entry.models,
+                default_model=entry.default_model,
+            )
+        return OpenAICompatibleProviderConfig(
+            name=entry.name,
+            base_url=entry.base_url,
+            api_key_env=entry.api_key_env,
+            credential_name=entry.credential_name,
+            models=entry.models,
+            default_model=entry.default_model,
+        )
+    raise ProviderConfigError(f"Unknown built-in provider: {name}")
 
 
 def default_openai_provider_config() -> OpenAICompatibleProviderConfig:
     """Return Tau's default OpenAI-compatible provider entry."""
-    return OpenAICompatibleProviderConfig(name=DEFAULT_PROVIDER_NAME)
+    provider = provider_config_from_catalog_entry(DEFAULT_PROVIDER_NAME)
+    if not isinstance(provider, OpenAICompatibleProviderConfig):
+        raise AssertionError("default OpenAI provider must be OpenAI-compatible")
+    return provider
 
 
 def provider_settings_path(paths: TauPaths | None = None) -> Path:
@@ -141,6 +216,16 @@ def upsert_openai_compatible_provider(
     set_default: bool = False,
 ) -> ProviderSettings:
     """Return settings with an OpenAI-compatible provider added or replaced."""
+    return upsert_provider(settings, provider, set_default=set_default)
+
+
+def upsert_provider(
+    settings: ProviderSettings,
+    provider: ProviderConfig,
+    *,
+    set_default: bool = False,
+) -> ProviderSettings:
+    """Return settings with a provider added or replaced."""
     providers_by_name = {item.name: item for item in settings.providers}
     providers_by_name[provider.name] = provider
     default_provider = provider.name if set_default else settings.default_provider
@@ -181,22 +266,31 @@ def resolve_provider_selection(
 
 def openai_compatible_config_from_provider(
     provider: OpenAICompatibleProviderConfig,
+    *,
+    credential_reader: CredentialReader | None = None,
 ) -> OpenAICompatibleConfig:
-    """Build runtime provider config from durable settings and environment."""
-    if (
-        provider.name == DEFAULT_PROVIDER_NAME
-        and provider.api_key_env == "OPENAI_API_KEY"
-        and provider.base_url == DEFAULT_OPENAI_COMPATIBLE_BASE_URL
-        and provider.timeout_seconds == DEFAULT_OPENAI_COMPATIBLE_TIMEOUT_SECONDS
-        and provider.max_retries == DEFAULT_OPENAI_COMPATIBLE_MAX_RETRIES
-        and provider.max_retry_delay_seconds
-        == DEFAULT_OPENAI_COMPATIBLE_MAX_RETRY_DELAY_SECONDS
-    ):
-        return openai_compatible_config_from_env(base_url_var="OPENAI_BASE_URL")
-    api_key = environ.get(provider.api_key_env)
-    if not api_key:
-        raise RuntimeError(f"Missing required environment variable: {provider.api_key_env}")
+    """Build OpenAI-compatible runtime config from durable settings."""
+    api_key = _api_key_from_provider(provider, credential_reader=credential_reader)
+    base_url = provider.base_url
+    if provider.name == DEFAULT_PROVIDER_NAME and provider.api_key_env == "OPENAI_API_KEY":
+        base_url = environ.get("OPENAI_BASE_URL", provider.base_url)
     return OpenAICompatibleConfig(
+        api_key=api_key,
+        base_url=base_url.rstrip("/"),
+        timeout_seconds=provider.timeout_seconds,
+        max_retries=provider.max_retries,
+        max_retry_delay_seconds=provider.max_retry_delay_seconds,
+    )
+
+
+def anthropic_config_from_provider(
+    provider: AnthropicProviderConfig,
+    *,
+    credential_reader: CredentialReader | None = None,
+) -> AnthropicConfig:
+    """Build Anthropic runtime config from durable settings."""
+    api_key = _api_key_from_provider(provider, credential_reader=credential_reader)
+    return AnthropicConfig(
         api_key=api_key,
         base_url=provider.base_url.rstrip("/"),
         timeout_seconds=provider.timeout_seconds,
@@ -205,15 +299,25 @@ def openai_compatible_config_from_provider(
     )
 
 
-def _provider_from_json(data: object) -> OpenAICompatibleProviderConfig:
+def provider_kind(provider: ProviderConfig) -> ProviderKind:
+    """Return the durable provider kind."""
+    if isinstance(provider, AnthropicProviderConfig):
+        return "anthropic"
+    return "openai-compatible"
+
+
+def _provider_from_json(data: object) -> ProviderConfig:
     if not isinstance(data, dict):
         raise ProviderConfigError("Provider entries must be JSON objects")
     provider_type = _string(data.get("type"), "providers[].type")
-    if provider_type != "openai-compatible":
+    if provider_type not in {"openai-compatible", "anthropic"}:
         raise ProviderConfigError(f"Unsupported provider type: {provider_type}")
     name = _string(data.get("name"), "providers[].name")
     base_url = _string(data.get("base_url"), f"providers[{name}].base_url").rstrip("/")
     api_key_env = _string(data.get("api_key_env"), f"providers[{name}].api_key_env")
+    credential_name = _optional_string(
+        data.get("credential_name"), f"providers[{name}].credential_name"
+    )
     models = _string_tuple(data.get("models"), f"providers[{name}].models")
     default_model = _string(data.get("default_model"), f"providers[{name}].default_model")
     timeout_seconds = _positive_float(
@@ -233,16 +337,73 @@ def _provider_from_json(data: object) -> OpenAICompatibleProviderConfig:
     )
     if default_model not in models:
         models = (*models, default_model)
+    if provider_type == "anthropic":
+        return AnthropicProviderConfig(
+            name=name,
+            base_url=base_url,
+            api_key_env=api_key_env,
+            credential_name=credential_name,
+            models=models,
+            default_model=default_model,
+            timeout_seconds=timeout_seconds,
+            max_retries=max_retries,
+            max_retry_delay_seconds=max_retry_delay_seconds,
+        )
     return OpenAICompatibleProviderConfig(
         name=name,
         base_url=base_url,
         api_key_env=api_key_env,
+        credential_name=credential_name,
         models=models,
         default_model=default_model,
         timeout_seconds=timeout_seconds,
         max_retries=max_retries,
         max_retry_delay_seconds=max_retry_delay_seconds,
     )
+
+
+def _api_key_from_provider(
+    provider: ProviderConfig,
+    *,
+    credential_reader: CredentialReader | None,
+) -> str:
+    api_key = environ.get(provider.api_key_env)
+    if api_key:
+        return api_key
+    if provider.credential_name and credential_reader is not None:
+        credential = credential_reader.get(provider.credential_name)
+        if credential:
+            return credential
+    credential_hint = f" or run /login {provider.name}" if provider.credential_name else ""
+    raise RuntimeError(
+        f"Missing provider API key. Set {provider.api_key_env}{credential_hint}."
+    )
+
+
+def _validate_provider_numbers(
+    *,
+    timeout_seconds: float,
+    max_retries: int,
+    max_retry_delay_seconds: float,
+) -> None:
+    if isinstance(timeout_seconds, bool) or timeout_seconds <= 0:
+        raise ProviderConfigError("Provider timeout_seconds must be greater than 0")
+    if not isinstance(max_retries, int) or isinstance(max_retries, bool) or max_retries < 0:
+        raise ProviderConfigError("Provider max_retries must be 0 or greater")
+    if (
+        not isinstance(max_retry_delay_seconds, int | float)
+        or isinstance(max_retry_delay_seconds, bool)
+        or max_retry_delay_seconds < 0
+    ):
+        raise ProviderConfigError("Provider max_retry_delay_seconds must be 0 or greater")
+
+
+def _optional_string(value: object, field_name: str) -> str | None:
+    if value is None:
+        return None
+    if not isinstance(value, str) or not value.strip():
+        raise ProviderConfigError(f"Provider field must be a non-empty string: {field_name}")
+    return value.strip()
 
 
 def _string(value: object, field_name: str) -> str:

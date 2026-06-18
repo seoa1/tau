@@ -13,7 +13,6 @@ from tau_ai import (
     DEFAULT_OPENAI_COMPATIBLE_MAX_RETRY_DELAY_SECONDS,
     DEFAULT_OPENAI_COMPATIBLE_TIMEOUT_SECONDS,
     ModelProvider,
-    OpenAICompatibleProvider,
 )
 from tau_ai.env import DEFAULT_OPENAI_COMPATIBLE_BASE_URL
 from tau_coding import __version__
@@ -23,11 +22,12 @@ from tau_coding.provider_config import (
     OpenAICompatibleProviderConfig,
     ProviderSettings,
     load_provider_settings,
-    openai_compatible_config_from_provider,
+    provider_kind,
     resolve_provider_selection,
     save_provider_settings,
     upsert_openai_compatible_provider,
 )
+from tau_coding.provider_runtime import create_model_provider
 from tau_coding.rendering import PrintOutputMode, create_event_renderer
 from tau_coding.resources import TauResourcePaths
 from tau_coding.session import CodingSession, CodingSessionConfig, jsonl_session_storage
@@ -246,7 +246,7 @@ def render_provider_settings(settings: ProviderSettings) -> None:
         marker = "*" if provider.name == settings.default_provider else " "
         models = ",".join(provider.models)
         typer.echo(
-            f"{marker}\t{provider.name}\topenai-compatible\t"
+            f"{marker}\t{provider.name}\t{provider_kind(provider)}\t"
             f"{provider.default_model}\t{models}\t{provider.api_key_env}\t"
             f"{provider.base_url}\t{provider.timeout_seconds:g}s\t"
             f"retries={provider.max_retries}\t"
@@ -265,7 +265,7 @@ async def run_openai_print_mode(
     """Run print mode with the OpenAI-compatible provider configured from the environment."""
     settings = load_provider_settings()
     selection = resolve_provider_selection(settings, provider_name=provider_name, model=model)
-    provider = OpenAICompatibleProvider(openai_compatible_config_from_provider(selection.provider))
+    provider = create_model_provider(selection.provider)
     manager = session_manager or SessionManager()
     record = manager.create_session(cwd=cwd, model=selection.model)
     try:

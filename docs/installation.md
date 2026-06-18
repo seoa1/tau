@@ -45,11 +45,13 @@ tau "explain this repository"
 Print-mode prompts create indexed session entries under `~/.tau/sessions/` while
 keeping stdout/stderr script-friendly.
 
-Tau needs an OpenAI-compatible provider. The default provider reads:
+Tau includes built-in provider entries for OpenAI, Anthropic, OpenRouter, and
+Hugging Face Inference Providers. In the TUI, run `/login` to see them and
+`/login openai` to save an API key.
 
-```bash
-export OPENAI_API_KEY="..."
-```
+Saved API keys live in `~/.tau/credentials.json` with private file permissions.
+Environment variables such as `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`,
+`OPENROUTER_API_KEY`, and `HF_TOKEN` still work and take precedence.
 
 Optionally configure a custom provider:
 
@@ -61,10 +63,12 @@ tau --provider local \
   setup
 ```
 
+Custom providers still read the API key from the configured environment
+variable, such as `LOCAL_API_KEY` in the example above.
+
 Then run:
 
 ```bash
-export LOCAL_API_KEY="..."
 tau --provider local
 ```
 

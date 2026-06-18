@@ -17,7 +17,7 @@ from tau_agent.session import (
     SessionStorage,
 )
 from tau_agent.tools import AgentTool
-from tau_ai import ModelProvider, OpenAICompatibleProvider
+from tau_ai import ModelProvider
 from tau_coding.commands import CommandRegistry, CommandResult, create_default_command_registry
 from tau_coding.context import discover_project_context_with_diagnostics
 from tau_coding.context_window import estimate_context_tokens, summarize_messages_for_compaction
@@ -30,8 +30,8 @@ from tau_coding.provider_config import (
     ProviderConfigError,
     ProviderSettings,
     load_provider_settings,
-    openai_compatible_config_from_provider,
 )
+from tau_coding.provider_runtime import ClosableModelProvider, create_model_provider
 from tau_coding.resources import (
     ResourceDiagnostic,
     ResourceError,
@@ -114,7 +114,7 @@ class CodingSession:
         self._provider_settings = config.provider_settings
         self._resource_paths = resource_paths_with_cwd(config.resource_paths, config.cwd)
         self._auto_compact_token_threshold = config.auto_compact_token_threshold
-        self._owned_providers: list[OpenAICompatibleProvider] = []
+        self._owned_providers: list[ClosableModelProvider] = []
 
     @classmethod
     async def load(cls, config: CodingSessionConfig) -> CodingSession:
@@ -294,11 +294,9 @@ class CodingSession:
             return
 
         try:
-            runtime_config = openai_compatible_config_from_provider(provider_config)
+            provider = create_model_provider(provider_config)
         except RuntimeError as exc:
             raise ProviderConfigError(str(exc)) from exc
-
-        provider = OpenAICompatibleProvider(runtime_config)
         self._owned_providers.append(provider)
         self._harness.config.provider = provider
         self._provider_name = provider_config.name

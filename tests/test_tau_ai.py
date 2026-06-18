@@ -7,6 +7,8 @@ import pytest
 from tau_agent import AgentTool, AgentToolResult, ToolCall, UserMessage
 from tau_agent.types import JSONValue
 from tau_ai import (
+    AnthropicConfig,
+    AnthropicProvider,
     FakeProvider,
     OpenAICompatibleConfig,
     OpenAICompatibleProvider,
@@ -300,3 +302,60 @@ async def test_openai_compatible_provider_does_not_retry_non_transient_status() 
     assert len(requests) == 1
     assert isinstance(events[-1], ProviderErrorEvent)
     assert events[-1].data == {"body": "bad request", "attempts": 1}
+
+
+@pytest.mark.anyio
+async def test_anthropic_provider_formats_request_and_streams_text() -> None:
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(
+            200,
+            text=(
+                'data: {"type":"message_start","message":{"content":[]}}\n\n'
+                'data: {"type":"content_block_delta","index":0,'
+                '"delta":{"type":"text_delta","text":"Hel"}}\n\n'
+                'data: {"type":"content_block_delta","index":0,'
+                '"delta":{"type":"text_delta","text":"lo"}}\n\n'
+                'data: {"type":"message_delta","delta":{"stop_reason":"end_turn"}}\n\n'
+                'data: {"type":"message_stop"}\n\n'
+            ),
+            headers={"content-type": "text/event-stream"},
+        )
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        provider = AnthropicProvider(
+            AnthropicConfig(api_key="test-key", base_url="https://api.anthropic.test/v1"),
+            client=client,
+        )
+
+        events = await _collect(
+            provider.stream_response(
+                model="claude-test",
+                system="You are Tau.",
+                messages=[UserMessage(content="Say hello")],
+                tools=[],
+            )
+        )
+
+    assert [event.type for event in events] == [
+        "response_start",
+        "text_delta",
+        "text_delta",
+        "response_end",
+    ]
+    assert isinstance(events[-1], ProviderResponseEndEvent)
+    assert events[-1].message.content == "Hello"
+    assert events[-1].finish_reason == "end_turn"
+
+    request = requests[0]
+    assert request.url == "https://api.anthropic.test/v1/messages"
+    assert request.headers["x-api-key"] == "test-key"
+    assert request.headers["anthropic-version"] == "2023-06-01"
+
+    payload = loads(request.content)
+    assert payload["model"] == "claude-test"
+    assert payload["stream"] is True
+    assert payload["system"] == "You are Tau."
+    assert payload["messages"] == [{"role": "user", "content": "Say hello"}]

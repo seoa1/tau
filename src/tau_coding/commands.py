@@ -7,6 +7,7 @@ from typing import Protocol
 
 from tau_agent.tools import AgentTool
 from tau_coding.prompt_templates import PromptTemplate
+from tau_coding.provider_catalog import BUILTIN_PROVIDER_CATALOG, builtin_provider_entry
 from tau_coding.resources import ResourceDiagnostic
 from tau_coding.session_manager import CodingSessionRecord, SessionManager
 from tau_coding.skills import Skill
@@ -74,6 +75,7 @@ class CommandResult:
     clear_requested: bool = False
     compact_summary: str | None = None
     resume_session_id: str | None = None
+    login_provider: str | None = None
     message: str | None = None
 
 
@@ -268,6 +270,14 @@ def create_default_command_registry() -> CommandRegistry:
             usage="/provider [name]",
             description="Show or switch the active provider.",
             handler=_provider_command,
+        )
+    )
+    registry.register(
+        SlashCommand(
+            name="login",
+            usage="/login [provider]",
+            description="Save an API key for a built-in provider.",
+            handler=_login_command,
         )
     )
     return registry
@@ -479,6 +489,30 @@ def _provider_command(context: CommandContext) -> CommandResult:
             "Switch providers with /provider <name>."
         ),
     )
+
+
+def _login_command(context: CommandContext) -> CommandResult:
+    provider_name = context.args.strip()
+    if provider_name:
+        entry = builtin_provider_entry(provider_name)
+        if entry is None:
+            providers = ", ".join(entry.name for entry in BUILTIN_PROVIDER_CATALOG)
+            return CommandResult(
+                handled=True,
+                message=(
+                    f"Unknown login provider: {provider_name}\n"
+                    f"Available providers: {providers}"
+                ),
+            )
+        return CommandResult(handled=True, login_provider=entry.name)
+
+    lines = ["Built-in providers:"]
+    lines.extend(
+        f"- {entry.name}: {entry.display_name} ({entry.default_model})"
+        for entry in BUILTIN_PROVIDER_CATALOG
+    )
+    lines.append("Run /login <provider> to save an API key.")
+    return CommandResult(handled=True, message="\n".join(lines))
 
 
 def _format_session_record(record: CodingSessionRecord) -> str:

@@ -1,9 +1,12 @@
 """Provider and model streaming layer for Tau."""
 
+from tau_ai.anthropic import AnthropicProvider
 from tau_ai.env import (
+    DEFAULT_ANTHROPIC_BASE_URL,
     DEFAULT_OPENAI_COMPATIBLE_MAX_RETRIES,
     DEFAULT_OPENAI_COMPATIBLE_MAX_RETRY_DELAY_SECONDS,
     DEFAULT_OPENAI_COMPATIBLE_TIMEOUT_SECONDS,
+    AnthropicConfig,
     OpenAICompatibleConfig,
     openai_compatible_config_from_env,
 )
@@ -21,6 +24,9 @@ from tau_ai.provider import CancellationToken, ModelProvider
 
 __all__ = [
     "CancellationToken",
+    "AnthropicConfig",
+    "AnthropicProvider",
+    "DEFAULT_ANTHROPIC_BASE_URL",
     "DEFAULT_OPENAI_COMPATIBLE_MAX_RETRIES",
     "DEFAULT_OPENAI_COMPATIBLE_MAX_RETRY_DELAY_SECONDS",
     "DEFAULT_OPENAI_COMPATIBLE_TIMEOUT_SECONDS",

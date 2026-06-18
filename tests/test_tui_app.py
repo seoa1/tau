@@ -6,6 +6,7 @@ from rich import box
 from rich.console import Console
 from rich.panel import Panel
 from textual.containers import VerticalScroll
+from textual.widgets import Input
 
 from tau_agent import (
     AgentEndEvent,
@@ -23,7 +24,7 @@ from tau_coding.skills import Skill
 from tau_coding.system_prompt import ProjectContextFile
 from tau_coding.tools import create_coding_tools
 from tau_coding.tui import app as tui_app
-from tau_coding.tui.app import CommandOutputScreen, SessionPickerScreen, TauTuiApp
+from tau_coding.tui.app import CommandOutputScreen, LoginScreen, SessionPickerScreen, TauTuiApp
 from tau_coding.tui.config import HIGH_CONTRAST_THEME, TuiKeybindings, TuiSettings
 from tau_coding.tui.state import ChatItem
 from tau_coding.tui.widgets import (
@@ -59,6 +60,7 @@ class FakeSession:
         self.session_manager = None
         self.compact_summaries: list[str] = []
         self.resumed_session_ids: list[str] = []
+        self.reload_count = 0
 
     def handle_command(self, text: str) -> CommandResult:
         if text == "/help":
@@ -72,10 +74,18 @@ class FakeSession:
             return CommandResult(handled=True, compact_summary=text.removeprefix("/compact "))
         if text.startswith("/resume "):
             return CommandResult(handled=True, resume_session_id=text.removeprefix("/resume "))
+        if text == "/login openai":
+            return CommandResult(handled=True, login_provider="openai")
         return CommandResult(handled=False)
 
     def set_model(self, model: str) -> None:
         self.model = model
+
+    def set_provider(self, provider_name: str) -> None:
+        self.provider_name = provider_name
+
+    def reload(self) -> None:
+        self.reload_count += 1
 
     async def compact(self, summary: str) -> str:
         self.compact_summaries.append(summary)
@@ -738,6 +748,33 @@ async def test_tui_app_uses_configured_completion_keybinding() -> None:
 
 
 @pytest.mark.anyio
+async def test_tui_login_saves_provider_key(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path))
+    session = FakeSession()
+    app = TauTuiApp(session)
+
+    async with app.run_test() as pilot:
+        prompt = app.query_one("#prompt")
+        prompt.value = "/login openai"
+        await pilot.press("enter")
+        await pilot.pause()
+
+        assert isinstance(app.screen, LoginScreen)
+
+        api_key_input = app.screen.query_one("#login-api-key", Input)
+        api_key_input.value = "stored-openai-key"
+        await pilot.press("enter")
+        await pilot.pause()
+
+    assert session.reload_count == 1
+    assert session.provider_name == "openai"
+    assert (tmp_path / ".tau" / "credentials.json").read_text(encoding="utf-8")
+
+
+@pytest.mark.anyio
 async def test_tui_prompt_worker_refreshes_directly() -> None:
     app = TauTuiApp(FakeSession(events=[AgentStartEvent(), AgentEndEvent()]))
     refreshes = 0
@@ -814,12 +851,7 @@ async def test_run_tui_app_creates_new_session_by_default(
         ),
     )
     monkeypatch.setattr(tui_app, "load_provider_settings", lambda: settings)
-    monkeypatch.setattr(
-        tui_app,
-        "openai_compatible_config_from_provider",
-        lambda provider: object(),
-    )
-    monkeypatch.setattr(tui_app, "OpenAICompatibleProvider", lambda config: FakeProvider())
+    monkeypatch.setattr(tui_app, "create_model_provider", lambda provider: FakeProvider())
     monkeypatch.setattr(tui_app, "CodingSession", FakeCodingSession)
     monkeypatch.setattr(tui_app, "TauTuiApp", FakeApp)
 
@@ -877,12 +909,7 @@ async def test_run_tui_app_resumes_explicit_session(
 
     settings = ProviderSettings()
     monkeypatch.setattr(tui_app, "load_provider_settings", lambda: settings)
-    monkeypatch.setattr(
-        tui_app,
-        "openai_compatible_config_from_provider",
-        lambda provider: object(),
-    )
-    monkeypatch.setattr(tui_app, "OpenAICompatibleProvider", lambda config: FakeProvider())
+    monkeypatch.setattr(tui_app, "create_model_provider", lambda provider: FakeProvider())
     monkeypatch.setattr(tui_app, "CodingSession", FakeCodingSession)
     monkeypatch.setattr(tui_app, "TauTuiApp", FakeApp)
 

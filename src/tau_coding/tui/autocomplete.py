@@ -177,7 +177,7 @@ def _command_argument_completions(
             options=_completion_options(model_names, description="Switch model"),
             sort=True,
         )
-    if command_name == "provider":
+    if command_name in {"login", "provider"}:
         return _value_completions(
             text=text,
             start=token_end + 1,

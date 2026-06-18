@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from os import environ
 
 DEFAULT_OPENAI_COMPATIBLE_BASE_URL = "https://api.openai.com/v1"
+DEFAULT_ANTHROPIC_BASE_URL = "https://api.anthropic.com/v1"
 DEFAULT_OPENAI_COMPATIBLE_TIMEOUT_SECONDS = 60.0
 DEFAULT_OPENAI_COMPATIBLE_MAX_RETRIES = 0
 DEFAULT_OPENAI_COMPATIBLE_MAX_RETRY_DELAY_SECONDS = 1.0
@@ -15,6 +16,17 @@ class OpenAICompatibleConfig:
 
     api_key: str
     base_url: str = DEFAULT_OPENAI_COMPATIBLE_BASE_URL
+    timeout_seconds: float = DEFAULT_OPENAI_COMPATIBLE_TIMEOUT_SECONDS
+    max_retries: int = DEFAULT_OPENAI_COMPATIBLE_MAX_RETRIES
+    max_retry_delay_seconds: float = DEFAULT_OPENAI_COMPATIBLE_MAX_RETRY_DELAY_SECONDS
+
+
+@dataclass(frozen=True, slots=True)
+class AnthropicConfig:
+    """Configuration for Anthropic's Messages API."""
+
+    api_key: str
+    base_url: str = DEFAULT_ANTHROPIC_BASE_URL
     timeout_seconds: float = DEFAULT_OPENAI_COMPATIBLE_TIMEOUT_SECONDS
     max_retries: int = DEFAULT_OPENAI_COMPATIBLE_MAX_RETRIES
     max_retry_delay_seconds: float = DEFAULT_OPENAI_COMPATIBLE_MAX_RETRY_DELAY_SECONDS

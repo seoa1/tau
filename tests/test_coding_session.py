@@ -488,13 +488,13 @@ async def test_session_switches_configured_provider(
 ) -> None:
     created_providers: list[SwitchableFakeProvider] = []
 
-    def create_provider(config: object) -> SwitchableFakeProvider:
-        provider = SwitchableFakeProvider(config)
+    def create_provider(provider_config: object) -> SwitchableFakeProvider:
+        provider = SwitchableFakeProvider(provider_config)
         created_providers.append(provider)
         return provider
 
     monkeypatch.setenv("LOCAL_API_KEY", "test-key")
-    monkeypatch.setattr(coding_session_module, "OpenAICompatibleProvider", create_provider)
+    monkeypatch.setattr(coding_session_module, "create_model_provider", create_provider)
     storage = JsonlSessionStorage(tmp_path / "session.jsonl")
     settings = ProviderSettings(
         default_provider="openai",

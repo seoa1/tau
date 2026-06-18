@@ -12,13 +12,17 @@ from textual.screen import ModalScreen
 from textual.widgets import Footer, Header, Input, Label, ListItem, ListView, Static
 from textual.worker import Worker
 
-from tau_ai import OpenAICompatibleProvider
 from tau_coding.commands import CommandRegistry, create_default_command_registry
+from tau_coding.credentials import FileCredentialStore
+from tau_coding.provider_catalog import ProviderCatalogEntry, builtin_provider_entry
 from tau_coding.provider_config import (
     load_provider_settings,
-    openai_compatible_config_from_provider,
+    provider_config_from_catalog_entry,
     resolve_provider_selection,
+    save_provider_settings,
+    upsert_provider,
 )
+from tau_coding.provider_runtime import create_model_provider
 from tau_coding.session import CodingSession, CodingSessionConfig, jsonl_session_storage
 from tau_coding.session_manager import SessionManager
 from tau_coding.tui.adapter import TuiEventAdapter
@@ -201,6 +205,41 @@ class CommandOutputScreen(ModalScreen[None]):
         self.dismiss(None)
 
 
+class LoginScreen(ModalScreen[str | None]):
+    """Password prompt for saving a provider API key."""
+
+    BINDINGS: ClassVar[list[BindingEntry]] = [
+        Binding("escape", "cancel", "Cancel"),
+    ]
+
+    def __init__(self, provider: ProviderCatalogEntry, *, theme: TuiTheme) -> None:
+        super().__init__()
+        self.provider = provider
+        self.theme = theme
+
+    def compose(self) -> ComposeResult:
+        """Compose the provider login prompt."""
+        with Vertical(id="login-screen"):
+            yield Static(f"Login: {self.provider.display_name}", id="login-title")
+            yield Static(self.provider.api_key_env, id="login-help")
+            yield Input(placeholder="Paste API key", password=True, id="login-api-key")
+            yield Static("Enter saves - Escape closes", id="login-footer")
+
+    def on_mount(self) -> None:
+        """Focus the API key field."""
+        self.query_one("#login-api-key", Input).focus()
+
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        """Dismiss with the submitted API key."""
+        if event.input.id != "login-api-key":
+            return
+        self.dismiss(event.value.strip() or None)
+
+    def action_cancel(self) -> None:
+        """Close without saving."""
+        self.dismiss(None)
+
+
 class TauTuiApp(App[None]):
     """Interactive Textual frontend for a ``CodingSession``."""
 
@@ -365,6 +404,44 @@ class TauTuiApp(App[None]):
         margin-top: 1;
         color: $tau-muted-text;
     }
+
+    LoginScreen {
+        align: center middle;
+    }
+
+    #login-screen {
+        width: 72;
+        max-width: 92%;
+        height: auto;
+        padding: 1 2;
+        background: $tau-chrome-background;
+        border: tall $tau-border;
+    }
+
+    #login-title {
+        height: 1;
+        color: $tau-chrome-text;
+        text-style: bold;
+        margin-bottom: 1;
+    }
+
+    #login-help {
+        height: 1;
+        color: $tau-muted-text;
+        margin-bottom: 1;
+    }
+
+    #login-api-key {
+        background: $tau-prompt-background;
+        color: $tau-prompt-text;
+        border: tall $tau-prompt-border;
+        margin-bottom: 1;
+    }
+
+    #login-footer {
+        height: 1;
+        color: $tau-muted-text;
+    }
     """
     BINDINGS: ClassVar[list[BindingEntry]] = []
 
@@ -460,6 +537,8 @@ class TauTuiApp(App[None]):
                     self._notify(f"Error: {exc}", severity="error")
             if command.resume_session_id is not None:
                 await self._resume_session(command.resume_session_id)
+            if command.login_provider is not None:
+                self._open_login(command.login_provider)
             if command.message:
                 self._show_command_message(text, command.message)
             self._refresh()
@@ -575,6 +654,32 @@ class TauTuiApp(App[None]):
             )
             return
         self._notify(message)
+
+    def _open_login(self, provider_name: str) -> None:
+        entry = builtin_provider_entry(provider_name)
+        if entry is None:
+            self._notify(f"Unknown provider: {provider_name}", severity="error")
+            return
+        self.push_screen(
+            LoginScreen(entry, theme=self.tui_settings.resolved_theme),
+            callback=lambda api_key: self._handle_login_result(entry, api_key),
+        )
+
+    def _handle_login_result(self, entry: ProviderCatalogEntry, api_key: str | None) -> None:
+        if api_key is None:
+            return
+        try:
+            FileCredentialStore().set(entry.credential_name, api_key)
+            settings = load_provider_settings()
+            provider = provider_config_from_catalog_entry(entry.name)
+            save_provider_settings(upsert_provider(settings, provider, set_default=True))
+            self.session.reload()
+            self.session.set_provider(entry.name)
+        except Exception as exc:  # noqa: BLE001 - surface login failures in the TUI
+            self._notify(f"Could not save login: {exc}", severity="error")
+            return
+        self._notify(f"Saved login for {entry.display_name}.")
+        self._refresh()
 
     def _notify(
         self,
@@ -740,7 +845,7 @@ async def run_tui_app(
         provider_name=provider_name,
         model=model,
     )
-    provider = OpenAICompatibleProvider(openai_compatible_config_from_provider(selection.provider))
+    provider = create_model_provider(selection.provider)
     manager = session_manager or SessionManager()
     session: CodingSession | None = None
     try:
