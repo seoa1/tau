@@ -13,7 +13,7 @@ from tau_agent import (
     QueuedMessages,
     QueueUpdateEvent,
 )
-from tau_agent.messages import AgentMessage, UserMessage
+from tau_agent.messages import AgentMessage, AssistantMessage, UserMessage
 from tau_agent.session import (
     BranchSummaryEntry,
     CompactionEntry,
@@ -323,18 +323,10 @@ class CodingSession:
     async def tree_choices(self) -> tuple[SessionTreeChoice, ...]:
         """Return branchable session entries for a tree picker."""
         entries = await self._config.storage.read_all()
-        children: dict[str | None, int] = {}
-        for entry in entries:
-            if entry.type != "leaf":
-                children[entry.parent_id] = children.get(entry.parent_id, 0) + 1
         return tuple(
             SessionTreeChoice(
                 entry_id=entry.id,
-                label=_tree_choice_label(
-                    entry,
-                    depth=_entry_depth(entries, entry.id),
-                    children=children,
-                ),
+                label=_tree_choice_label(entry),
                 active=entry.id == self._state.active_leaf_id,
             )
             for entry in entries
@@ -959,48 +951,29 @@ def _last_parent_id_from_state(state: SessionState) -> str | None:
 
 
 def _is_branchable_tree_entry(entry: SessionEntry) -> bool:
-    return entry.type in {
-        "message",
-        "model_change",
-        "thinking_level_change",
-        "compaction",
-        "branch_summary",
-        "session_info",
-    }
+    if entry.type in {"compaction", "branch_summary"}:
+        return True
+    if entry.type != "message":
+        return False
+    return isinstance(entry.message, UserMessage | AssistantMessage)
 
 
-def _entry_depth(entries: list[SessionEntry], entry_id: str) -> int:
-    try:
-        return max(0, len(path_to_entry(entries, entry_id)) - 1)
-    except SessionTreeError:
-        return 0
-
-
-def _tree_choice_label(
-    entry: SessionEntry,
-    *,
-    depth: int,
-    children: dict[str | None, int],
-) -> str:
-    prefix = "  " * depth
-    branch_marker = "+" if children.get(entry.id, 0) > 1 else "-"
-    return f"{prefix}{branch_marker} {_tree_entry_title(entry)}"
+def _tree_choice_label(entry: SessionEntry) -> str:
+    return _tree_entry_title(entry)
 
 
 def _tree_entry_title(entry: SessionEntry) -> str:
     match entry.type:
         case "message":
-            return f"{entry.message.role}: {_message_text_preview(entry.message)}"
-        case "model_change":
-            return f"model: {entry.model}"
-        case "thinking_level_change":
-            return f"thinking: {entry.thinking_level or 'off'}"
+            message = entry.message
+            if isinstance(message, AssistantMessage) and message.tool_calls and not message.content:
+                tool_names = ", ".join(call.name for call in message.tool_calls)
+                return f"tool call: {tool_names}"
+            return f"{message.role}: {_message_text_preview(message)}"
         case "compaction":
-            return f"compaction: {_short_preview(entry.summary)}"
+            return f"compaction summary: {_short_preview(entry.summary)}"
         case "branch_summary":
             return f"branch summary: {_short_preview(entry.summary)}"
-        case "session_info":
-            return f"session: {entry.title or entry.cwd or entry.id}"
         case _:
             return entry.type
 

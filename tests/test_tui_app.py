@@ -175,9 +175,9 @@ class FakeSession:
 
     async def tree_choices(self) -> tuple[SessionTreeChoice, ...]:
         return (
-            SessionTreeChoice(entry_id="root", label="- user: Root"),
-            SessionTreeChoice(entry_id="left", label="  - assistant: Left"),
-            SessionTreeChoice(entry_id="right", label="  - assistant: Right", active=True),
+            SessionTreeChoice(entry_id="root", label="user: Root"),
+            SessionTreeChoice(entry_id="left", label="assistant: Left"),
+            SessionTreeChoice(entry_id="right", label="assistant: Right", active=True),
         )
 
     async def branch_to_entry(self, entry_id: str, *, summarize: bool = False) -> str:
@@ -1453,9 +1453,9 @@ async def test_tui_app_tree_picker_branches_with_summary() -> None:
         assert tree_list.index == 2
         labels = [str(item.query_one(Label).render()) for item in tree_list.children]
         assert labels == [
-            "  - user: Root",
-            "    - assistant: Left",
-            "*   - assistant: Right",
+            "  user: Root",
+            "  assistant: Left",
+            "* assistant: Right",
         ]
 
         await pilot.press("up")
