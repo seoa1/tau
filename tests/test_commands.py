@@ -82,6 +82,7 @@ def test_registered_commands_are_pi_aligned(tmp_path: Path) -> None:
         "scoped-models",
         "session",
         "theme",
+        "tree",
     ]
 
 
@@ -105,6 +106,18 @@ def test_compact_command_requires_and_returns_summary(tmp_path: Path) -> None:
 
     assert missing.message == "Usage: /compact <summary>"
     assert requested.compact_summary == "Summary of prior work."
+
+
+def test_tree_command_requests_picker(tmp_path: Path) -> None:
+    registry = create_default_command_registry()
+    session = FakeSession(tmp_path)
+
+    result = registry.execute(session, "/tree")
+    with_args = registry.execute(session, "/tree root")
+
+    assert result.handled is True
+    assert result.tree_picker_requested is True
+    assert with_args.message == "Usage: /tree"
 
 
 def test_export_command_requests_default_export(tmp_path: Path) -> None:

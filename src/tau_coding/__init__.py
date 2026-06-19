@@ -75,6 +75,7 @@ from tau_coding.session import (
     CodingSession,
     CodingSessionConfig,
     ModelChoice,
+    SessionTreeChoice,
     default_session_path,
     jsonl_session_storage,
 )
@@ -144,6 +145,7 @@ __all__ = [
     "FinalTextRenderer",
     "JsonEventRenderer",
     "ModelChoice",
+    "SessionTreeChoice",
     "AnthropicProviderConfig",
     "OpenAICompatibleProviderConfig",
     "OpenAICodexProviderConfig",

@@ -528,6 +528,141 @@ async def test_load_restores_active_leaf_branch(tmp_path: Path) -> None:
 
 
 @pytest.mark.anyio
+async def test_session_tree_choices_indent_only_diverged_branches(tmp_path: Path) -> None:
+    storage = JsonlSessionStorage(tmp_path / "session.jsonl")
+    root = MessageEntry(id="root", message=UserMessage(content="Root"))
+    main = MessageEntry(id="main", parent_id="root", message=AssistantMessage(content="Main"))
+    first_branch = MessageEntry(
+        id="first-branch",
+        parent_id="root",
+        message=AssistantMessage(content="First branch"),
+    )
+    first_branch_child = MessageEntry(
+        id="first-branch-child",
+        parent_id="first-branch",
+        message=UserMessage(content="Follow-up"),
+    )
+    main_child = MessageEntry(
+        id="main-child",
+        parent_id="main",
+        message=UserMessage(content="Main follow-up"),
+    )
+    second_branch = MessageEntry(
+        id="second-branch",
+        parent_id="root",
+        message=AssistantMessage(content="Second branch"),
+    )
+    await storage.append(root)
+    await storage.append(main)
+    await storage.append(first_branch)
+    await storage.append(first_branch_child)
+    await storage.append(main_child)
+    await storage.append(second_branch)
+    await storage.append(LeafEntry(entry_id="second-branch"))
+    session = await CodingSession.load(_config(tmp_path, FakeProvider([]), storage))
+
+    choices = await session.tree_choices()
+
+    assert [choice.label for choice in choices] == [
+        "user: Root",
+        "assistant: Main",
+        "  assistant: First branch",
+        "  assistant: Second branch",
+        "user: Main follow-up",
+        "  user: Follow-up",
+    ]
+
+
+@pytest.mark.anyio
+async def test_session_branches_to_previous_entry_without_destroying_history(
+    tmp_path: Path,
+) -> None:
+    storage = JsonlSessionStorage(tmp_path / "session.jsonl")
+    root = MessageEntry(id="root", message=UserMessage(content="Root"))
+    left = MessageEntry(id="left", parent_id="root", message=AssistantMessage(content="Left"))
+    right = MessageEntry(id="right", parent_id="root", message=AssistantMessage(content="Right"))
+    await storage.append(root)
+    await storage.append(left)
+    await storage.append(right)
+    await storage.append(LeafEntry(entry_id="right"))
+    session = await CodingSession.load(_config(tmp_path, FakeProvider([]), storage))
+
+    result = await session.branch_to_entry("left")
+
+    entries = await storage.read_all()
+    assert result == "Branched session at left."
+    assert session.messages == (UserMessage(content="Root"), AssistantMessage(content="Left"))
+    assert [entry.id for entry in entries if entry.type == "message"] == ["root", "left", "right"]
+    assert isinstance(entries[-1], LeafEntry)
+    assert entries[-1].entry_id == "left"
+
+
+@pytest.mark.anyio
+async def test_session_branch_restores_model_from_selected_path(tmp_path: Path) -> None:
+    storage = JsonlSessionStorage(tmp_path / "session.jsonl")
+    first_model = ModelChangeEntry(id="model-a", model="first-model")
+    left = MessageEntry(
+        id="left",
+        parent_id="model-a",
+        message=UserMessage(content="Before switch"),
+    )
+    second_model = ModelChangeEntry(
+        id="model-b",
+        parent_id="left",
+        model="second-model",
+    )
+    right = MessageEntry(
+        id="right",
+        parent_id="model-b",
+        message=AssistantMessage(content="After switch"),
+    )
+    await storage.append(first_model)
+    await storage.append(left)
+    await storage.append(second_model)
+    await storage.append(right)
+    await storage.append(LeafEntry(entry_id="right"))
+    session = await CodingSession.load(_config(tmp_path, FakeProvider([]), storage))
+
+    assert session.model == "second-model"
+
+    await session.branch_to_entry("left")
+
+    assert session.state.model == "first-model"
+    assert session.model == "first-model"
+
+
+@pytest.mark.anyio
+async def test_session_branch_with_summary_rebuilds_context(tmp_path: Path) -> None:
+    storage = JsonlSessionStorage(tmp_path / "session.jsonl")
+    root = MessageEntry(id="root", message=UserMessage(content="Root"))
+    left = MessageEntry(id="left", parent_id="root", message=AssistantMessage(content="Left"))
+    right = MessageEntry(
+        id="right",
+        parent_id="left",
+        message=UserMessage(content="Abandoned follow-up"),
+    )
+    await storage.append(root)
+    await storage.append(left)
+    await storage.append(right)
+    await storage.append(LeafEntry(entry_id="right"))
+    session = await CodingSession.load(_config(tmp_path, FakeProvider([]), storage))
+
+    result = await session.branch_to_entry("root", summarize=True)
+    entries = await storage.read_all()
+    summary = entries[-2]
+
+    assert "with branch summary" in result
+    assert summary.type == "branch_summary"
+    assert summary.parent_id == "root"
+    assert summary.branch_root_id == "root"
+    assert session.messages[0] == UserMessage(content="Root")
+    assert session.messages[1].role == "user"
+    assert isinstance(session.messages[1].content, str)
+    assert "Previous branch summary from root:" in session.messages[1].content
+    assert "Abandoned follow-up" in session.messages[1].content
+
+
+@pytest.mark.anyio
 async def test_continue_persists_only_new_messages(tmp_path: Path) -> None:
     storage = JsonlSessionStorage(tmp_path / "session.jsonl")
     await storage.append(MessageEntry(id="user", message=UserMessage(content="Continue me")))

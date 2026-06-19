@@ -54,6 +54,7 @@ from tau_coding.session import (
     CodingSession,
     CodingSessionConfig,
     ModelChoice,
+    SessionTreeChoice,
     jsonl_session_storage,
     parse_terminal_command,
 )
@@ -439,6 +440,135 @@ class SessionPickerScreen(ModalScreen[str | None]):
 
     def action_cancel(self) -> None:
         """Close the picker without selecting a session."""
+        self.dismiss(None)
+
+
+class TreePickerScreen(ModalScreen[tuple[str, bool] | None]):
+    """Modal picker for branching from a previous session entry."""
+
+    BINDINGS: ClassVar[list[BindingEntry]] = [
+        Binding("escape", "cancel", "Cancel"),
+        Binding("up", "cursor_up", "Up", show=False),
+        Binding("down", "cursor_down", "Down", show=False),
+        Binding("enter", "select_cursor", "Branch", show=False),
+        Binding("s", "select_with_summary", "Summarize", show=False),
+        Binding("ctrl+t", "toggle_tool_calls", "Tool calls", show=False),
+    ]
+
+    def __init__(
+        self,
+        choices: Sequence[SessionTreeChoice],
+        *,
+        theme: TuiTheme,
+    ) -> None:
+        super().__init__()
+        self.choices = tuple(choices)
+        self.theme = theme
+        self.show_tool_calls = True
+
+    def compose(self) -> ComposeResult:
+        """Compose the tree picker."""
+        with Vertical(id="tree-picker"):
+            yield Static("Session Tree", id="tree-picker-title")
+            yield ListView(
+                *self._list_items(),
+                id="tree-picker-list",
+            )
+            yield Static(
+                self._help_text(),
+                id="tree-picker-help",
+            )
+
+    def on_mount(self) -> None:
+        """Focus the tree list for keyboard navigation."""
+        tree_list = self.query_one("#tree-picker-list", ListView)
+        tree_list.index = _active_tree_choice_index(self.choices)
+        tree_list.focus()
+
+    def on_key(self, event: Key) -> None:
+        """Route tree picker keys to the list."""
+        if event.key == "up":
+            event.stop()
+            self.action_cursor_up()
+        elif event.key == "down":
+            event.stop()
+            self.action_cursor_down()
+        elif event.key == "enter":
+            event.stop()
+            self.action_select_cursor()
+        elif event.key == "s":
+            event.stop()
+            self.action_select_with_summary()
+        elif event.key == "ctrl+t":
+            event.stop()
+            self.action_toggle_tool_calls()
+
+    def on_list_view_selected(self, event: ListView.Selected) -> None:
+        """Dismiss with the selected entry id."""
+        self.dismiss((self._visible_choices()[event.index].entry_id, False))
+
+    def action_cursor_up(self) -> None:
+        """Move to the previous tree entry."""
+        self.query_one("#tree-picker-list", ListView).action_cursor_up()
+
+    def action_cursor_down(self) -> None:
+        """Move to the next tree entry."""
+        self.query_one("#tree-picker-list", ListView).action_cursor_down()
+
+    def action_select_cursor(self) -> None:
+        """Branch from the highlighted entry without a summary."""
+        self.query_one("#tree-picker-list", ListView).action_select_cursor()
+
+    def action_select_with_summary(self) -> None:
+        """Branch from the highlighted entry with a branch summary."""
+        tree_list = self.query_one("#tree-picker-list", ListView)
+        index = tree_list.index
+        if index is None:
+            return
+        self.dismiss((self._visible_choices()[index].entry_id, True))
+
+    def action_toggle_tool_calls(self) -> None:
+        """Toggle tool-call entries in the tree picker."""
+        self.run_worker(self._toggle_tool_calls())
+
+    async def _toggle_tool_calls(self) -> None:
+        selected_entry_id = self._selected_entry_id()
+        self.show_tool_calls = not self.show_tool_calls
+        tree_list = self.query_one("#tree-picker-list", ListView)
+        await tree_list.clear()
+        await tree_list.extend(self._list_items())
+        visible_choices = self._visible_choices()
+        tree_list.index = _tree_choice_index(visible_choices, selected_entry_id)
+        self.query_one("#tree-picker-help", Static).update(self._help_text())
+
+    def _selected_entry_id(self) -> str | None:
+        tree_list = self.query_one("#tree-picker-list", ListView)
+        index = tree_list.index
+        visible_choices = self._visible_choices()
+        if index is None or index >= len(visible_choices):
+            return None
+        return visible_choices[index].entry_id
+
+    def _visible_choices(self) -> tuple[SessionTreeChoice, ...]:
+        if self.show_tool_calls:
+            return self.choices
+        return tuple(choice for choice in self.choices if not choice.is_tool_call)
+
+    def _list_items(self) -> list[ListItem]:
+        return [
+            ListItem(Label(_tree_picker_label(choice, theme=self.theme), markup=False))
+            for choice in self._visible_choices()
+        ]
+
+    def _help_text(self) -> str:
+        tool_call_state = "shown" if self.show_tool_calls else "hidden"
+        return (
+            "Enter branches - S branches with summary - "
+            f"Ctrl+T tool calls {tool_call_state} - Escape closes"
+        )
+
+    def action_cancel(self) -> None:
+        """Close the picker without selecting an entry."""
         self.dismiss(None)
 
 
@@ -1288,11 +1418,13 @@ class TauTuiApp(App[None]):
     }
 
     SessionPickerScreen,
+    TreePickerScreen,
     CommandOutputScreen {
         align: center middle;
     }
 
-    #session-picker {
+    #session-picker,
+    #tree-picker {
         width: 76;
         max-width: 90%;
         height: auto;
@@ -1302,14 +1434,16 @@ class TauTuiApp(App[None]):
         border: tall $tau-border;
     }
 
-    #session-picker-title {
+    #session-picker-title,
+    #tree-picker-title {
         height: 1;
         color: $tau-chrome-text;
         text-style: bold;
         margin-bottom: 1;
     }
 
-    #session-picker-list {
+    #session-picker-list,
+    #tree-picker-list {
         height: auto;
         max-height: 16;
         background: $tau-transcript-background;
@@ -1326,7 +1460,8 @@ class TauTuiApp(App[None]):
         color: $tau-highlight-text;
     }
 
-    #session-picker-help {
+    #session-picker-help,
+    #tree-picker-help {
         height: 1;
         margin-top: 1;
         color: $tau-muted-text;
@@ -1648,6 +1783,8 @@ class TauTuiApp(App[None]):
                 await self._resume_session(command.resume_session_id)
             if command.resume_picker_requested:
                 self.action_open_session_picker()
+            if command.tree_picker_requested:
+                await self._open_tree_picker()
             if command.login_picker_requested:
                 self._open_login_picker()
             if command.login_provider is not None:
@@ -1785,6 +1922,7 @@ class TauTuiApp(App[None]):
         if isinstance(
             self.screen,
             SessionPickerScreen
+            | TreePickerScreen
             | LoginMethodPickerScreen
             | LoginProviderPickerScreen
             | ThemePickerScreen
@@ -1808,6 +1946,7 @@ class TauTuiApp(App[None]):
         if isinstance(
             self.screen,
             SessionPickerScreen
+            | TreePickerScreen
             | LoginMethodPickerScreen
             | LoginProviderPickerScreen
             | ThemePickerScreen
@@ -1829,6 +1968,7 @@ class TauTuiApp(App[None]):
         if isinstance(
             self.screen,
             SessionPickerScreen
+            | TreePickerScreen
             | LoginMethodPickerScreen
             | LoginProviderPickerScreen
             | ThemePickerScreen
@@ -1924,6 +2064,50 @@ class TauTuiApp(App[None]):
             self.state.clear()
             self.state.load_messages(self.session.messages)
             self._notify(resume_message)
+        except Exception as exc:  # noqa: BLE001 - surface command failures in the TUI
+            self._notify(f"Error: {exc}", severity="error")
+        self._refresh()
+
+    async def _open_tree_picker(self) -> None:
+        tree_choices = getattr(self.session, "tree_choices", None)
+        if tree_choices is None:
+            self._notify("Session tree is not available.", severity="warning")
+            return
+        try:
+            choices = tuple(await tree_choices())
+        except Exception as exc:  # noqa: BLE001 - surface command failures in the TUI
+            self._notify(f"Error: {exc}", severity="error")
+            return
+        if not choices:
+            self._notify("No session entries are available for branching.", severity="warning")
+            return
+        self.push_screen(
+            TreePickerScreen(choices, theme=self.tui_settings.resolved_theme),
+            callback=self._handle_tree_picker_result,
+        )
+
+    def _handle_tree_picker_result(self, result: tuple[str, bool] | None) -> None:
+        if result is None:
+            return
+        entry_id, summarize = result
+        self.run_worker(
+            self._branch_to_tree_entry(entry_id, summarize=summarize),
+            exclusive=False,
+        )
+
+    async def _branch_to_tree_entry(self, entry_id: str, *, summarize: bool) -> None:
+        branch_to_entry = getattr(self.session, "branch_to_entry", None)
+        if branch_to_entry is None:
+            self._notify("Session tree is not available.", severity="warning")
+            return
+        try:
+            result = branch_to_entry(entry_id, summarize=summarize)
+            if isawaitable(result):
+                result = await result
+            self.state.clear()
+            self.state.load_messages(self.session.messages)
+            if isinstance(result, str):
+                self._notify(result)
         except Exception as exc:  # noqa: BLE001 - surface command failures in the TUI
             self._notify(f"Error: {exc}", severity="error")
         self._refresh()
@@ -2441,6 +2625,37 @@ def _session_picker_label(record: SessionCompletionRecord) -> str:
     if title is not None:
         parts.append(title)
     return " - ".join(parts)
+
+
+def _tree_picker_label(choice: SessionTreeChoice, *, theme: TuiTheme) -> Text:
+    marker = "* " if choice.active else "  "
+    label = choice.label
+    indent_width = len(label) - len(label.lstrip(" "))
+    indent = label[:indent_width]
+    body = label[indent_width:]
+    author, separator, rest = body.partition(":")
+    text = Text(f"{marker}{indent}")
+    if separator:
+        text.append(author, style=theme.accent)
+        text.append(f"{separator}{rest}")
+    else:
+        text.append(body)
+    return text
+
+
+def _active_tree_choice_index(choices: Sequence[SessionTreeChoice]) -> int:
+    return _tree_choice_index(choices, None)
+
+
+def _tree_choice_index(choices: Sequence[SessionTreeChoice], entry_id: str | None) -> int:
+    if entry_id is not None:
+        for index, choice in enumerate(choices):
+            if choice.entry_id == entry_id:
+                return index
+    for index, choice in enumerate(choices):
+        if choice.active:
+            return index
+    return 0
 
 
 def _session_updated_at_label(timestamp: float) -> str:
