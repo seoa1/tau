@@ -583,6 +583,81 @@ class LoginMethodPickerScreen(ModalScreen[str | None]):
         self.dismiss(None)
 
 
+class ThemePickerScreen(ModalScreen[TuiThemeName | None]):
+    """Theme picker for the built-in TUI themes."""
+
+    BINDINGS: ClassVar[list[BindingEntry]] = [
+        Binding("escape", "cancel", "Cancel"),
+        Binding("up", "cursor_up", "Up", show=False),
+        Binding("down", "cursor_down", "Down", show=False),
+        Binding("enter", "select_cursor", "Select", show=False),
+    ]
+
+    def __init__(self, *, current_theme: TuiThemeName, theme: TuiTheme) -> None:
+        super().__init__()
+        self.current_theme = current_theme
+        self.theme = theme
+
+    def compose(self) -> ComposeResult:
+        """Compose the theme picker."""
+        with Vertical(id="theme-picker"):
+            yield Static("Theme", id="theme-picker-title")
+            yield ListView(
+                *[
+                    ListItem(
+                        Label(
+                            _theme_picker_label(theme_name, current_theme=self.current_theme),
+                            markup=False,
+                        )
+                    )
+                    for theme_name in BUILTIN_TUI_THEME_NAMES
+                ],
+                id="theme-picker-list",
+            )
+            yield Static("Enter selects - Escape closes", id="theme-picker-help")
+
+    def on_mount(self) -> None:
+        """Select the current theme."""
+        theme_list = self.query_one("#theme-picker-list", ListView)
+        try:
+            theme_list.index = BUILTIN_TUI_THEME_NAMES.index(self.current_theme)
+        except ValueError:
+            theme_list.index = 0
+        theme_list.focus()
+
+    def on_key(self, event: Key) -> None:
+        """Route theme picker keys to the list."""
+        if event.key == "up":
+            event.stop()
+            self.action_cursor_up()
+        elif event.key == "down":
+            event.stop()
+            self.action_cursor_down()
+        elif event.key == "enter":
+            event.stop()
+            self.action_select_cursor()
+
+    def on_list_view_selected(self, event: ListView.Selected) -> None:
+        """Dismiss with the selected theme name."""
+        self.dismiss(BUILTIN_TUI_THEME_NAMES[event.index])
+
+    def action_cursor_up(self) -> None:
+        """Move to the previous theme."""
+        self.query_one("#theme-picker-list", ListView).action_cursor_up()
+
+    def action_cursor_down(self) -> None:
+        """Move to the next theme."""
+        self.query_one("#theme-picker-list", ListView).action_cursor_down()
+
+    def action_select_cursor(self) -> None:
+        """Select the highlighted theme."""
+        self.query_one("#theme-picker-list", ListView).action_select_cursor()
+
+    def action_cancel(self) -> None:
+        """Close without selecting a theme."""
+        self.dismiss(None)
+
+
 class ModelPickerScreen(ModalScreen[ModelChoice | None]):
     """Model picker for the active TUI provider."""
 
@@ -1029,12 +1104,14 @@ class TauTuiApp(App[None]):
     }
 
     LoginProviderPickerScreen,
+    ThemePickerScreen,
     ModelPickerScreen {
         align: center middle;
     }
 
     #login-method-picker,
     #login-provider-picker,
+    #theme-picker,
     #model-picker {
         width: 76;
         max-width: 90%;
@@ -1047,6 +1124,7 @@ class TauTuiApp(App[None]):
 
     #login-method-title,
     #login-provider-title,
+    #theme-picker-title,
     #model-picker-title {
         height: 1;
         color: $tau-chrome-text;
@@ -1055,6 +1133,7 @@ class TauTuiApp(App[None]):
     }
 
     #login-provider-list,
+    #theme-picker-list,
     #model-picker-list {
         height: auto;
         max-height: 12;
@@ -1088,6 +1167,7 @@ class TauTuiApp(App[None]):
 
     #login-method-help,
     #login-provider-help,
+    #theme-picker-help,
     #model-picker-help {
         height: 1;
         margin-top: 1;
@@ -1275,6 +1355,8 @@ class TauTuiApp(App[None]):
                 self._open_login(command.login_provider)
             if command.model_picker_requested:
                 self._open_model_picker()
+            if command.theme_picker_requested:
+                self._open_theme_picker()
             if command.thinking_level is not None:
                 await self._set_thinking_level(command.thinking_level)
             if command.theme is not None:
@@ -1666,6 +1748,20 @@ class TauTuiApp(App[None]):
         self._notify(f"Current model: {choice.provider_name}:{choice.model}")
         self._refresh()
 
+    def _open_theme_picker(self) -> None:
+        self.push_screen(
+            ThemePickerScreen(
+                current_theme=self.tui_settings.theme,
+                theme=self.tui_settings.resolved_theme,
+            ),
+            callback=self._handle_theme_picker_result,
+        )
+
+    def _handle_theme_picker_result(self, theme: TuiThemeName | None) -> None:
+        if theme is None:
+            return
+        self._set_tui_theme(theme)
+
     async def _set_thinking_level(self, level: str) -> None:
         setter = getattr(self.session, "set_thinking_level", None)
         if setter is None:
@@ -1916,6 +2012,11 @@ def _api_key_login_providers(
     providers: Sequence[ProviderCatalogEntry],
 ) -> tuple[ProviderCatalogEntry, ...]:
     return tuple(provider for provider in providers if provider.kind != "openai-codex")
+
+
+def _theme_picker_label(theme_name: TuiThemeName, *, current_theme: TuiThemeName) -> str:
+    marker = "✓" if theme_name == current_theme else " "
+    return f"{marker} {theme_name}"
 
 
 def _model_picker_label(choice: ModelChoice, *, current_model: str, current_provider: str) -> str:

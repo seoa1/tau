@@ -177,7 +177,7 @@ def test_thinking_command_rejects_unsupported_available_mode(tmp_path: Path) -> 
     assert "Available modes: off, low" in result.message
 
 
-def test_theme_command_lists_and_requests_themes(tmp_path: Path) -> None:
+def test_theme_command_requests_picker_and_sets_theme(tmp_path: Path) -> None:
     session = FakeSession(tmp_path)
     registry = create_default_command_registry()
 
@@ -185,9 +185,7 @@ def test_theme_command_lists_and_requests_themes(tmp_path: Path) -> None:
     switch_result = registry.execute(session, "/theme tau-light")
     unknown_result = registry.execute(session, "/theme solarized")
 
-    assert list_result.message is not None
-    assert "Current theme: tau-dark" in list_result.message
-    assert "Available themes: tau-dark, tau-light, high-contrast" in list_result.message
+    assert list_result.theme_picker_requested is True
     assert switch_result.theme == "tau-light"
     assert unknown_result.message is not None
     assert "Unknown theme: solarized" in unknown_result.message

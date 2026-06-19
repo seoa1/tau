@@ -7,7 +7,7 @@ import pytest
 from rich.console import Console
 from rich.panel import Panel
 from textual.containers import VerticalScroll
-from textual.widgets import Button, Footer, Input, Label, ListView, TextArea
+from textual.widgets import Button, Footer, Input, Label, ListItem, ListView, TextArea
 
 from tau_agent import (
     AgentEndEvent,
@@ -40,6 +40,7 @@ from tau_coding.tui.app import (
     LoginScreen,
     ModelPickerScreen,
     OAuthLoginScreen,
+    ThemePickerScreen,
     SessionPickerScreen,
     TauTuiApp,
 )
@@ -118,6 +119,8 @@ class FakeSession:
             return CommandResult(handled=True, model_picker_requested=True)
         if text.startswith("/thinking "):
             return CommandResult(handled=True, thinking_level=text.removeprefix("/thinking "))
+        if text == "/theme":
+            return CommandResult(handled=True, theme_picker_requested=True)
         if text.startswith("/theme "):
             return CommandResult(handled=True, theme=text.removeprefix("/theme "))
         return CommandResult(handled=False)
@@ -896,7 +899,38 @@ async def test_tui_app_clears_activity_status_on_error() -> None:
 
 
 @pytest.mark.anyio
-async def test_tui_app_theme_command_updates_theme_and_persists(
+async def test_tui_app_theme_command_opens_picker_and_persists_selection(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path))
+    app = TauTuiApp(FakeSession())
+
+    async with app.run_test() as pilot:
+        prompt = app.query_one("#prompt")
+        prompt.value = "/theme"
+        await pilot.press("enter")
+        await pilot.pause()
+
+        picker = app.screen
+        assert isinstance(picker, ThemePickerScreen)
+        assert [str(item.query_one(Label).render()) for item in picker.query(ListItem)] == [
+            "✓ tau-dark",
+            "  tau-light",
+            "  high-contrast",
+        ]
+
+        theme_list = picker.query_one("#theme-picker-list", ListView)
+        theme_list.index = 1
+        await pilot.press("enter")
+        await pilot.pause()
+
+        assert app.tui_settings.theme == "tau-light"
+        assert tui_settings_path().read_text(encoding="utf-8").find('"theme": "tau-light"') != -1
+        assert app.get_theme_variable_defaults()["tau-screen-background"] == "#ffffff"
+
+
+@pytest.mark.anyio
+async def test_tui_app_theme_command_argument_updates_theme_and_persists(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("HOME", str(tmp_path))

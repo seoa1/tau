@@ -146,9 +146,10 @@ The built-in themes are:
   backgrounds and darker foreground colors.
 - `high-contrast`, a sharper dark theme for brighter terminal contrast.
 
-In the Textual TUI, run `/theme` to list themes and `/theme tau-light`,
-`/theme tau-dark`, or `/theme high-contrast` to switch themes. The selection is
-saved to `~/.tau/tui.json` and applies immediately.
+In the Textual TUI, run `/theme` to open an interactive theme picker. You can
+also run `/theme tau-light`, `/theme tau-dark`, or `/theme high-contrast` to
+switch directly. The selection is saved to `~/.tau/tui.json` and applies
+immediately.
 
 The built-in sidebar is responsive: Tau shows it on medium or larger terminal
 windows and hides it automatically when the terminal is narrow or short.

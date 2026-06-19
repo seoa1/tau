@@ -87,6 +87,7 @@ class CommandResult:
     login_picker_requested: bool = False
     login_provider: str | None = None
     model_picker_requested: bool = False
+    theme_picker_requested: bool = False
     thinking_level: str | None = None
     theme: str | None = None
     message: str | None = None
@@ -562,13 +563,8 @@ def _thinking_command(context: CommandContext) -> CommandResult:
 
 
 def _theme_command(context: CommandContext) -> CommandResult:
-    current_theme = getattr(context.session, "tui_theme", None) or "tau-dark"
     if not context.args:
-        themes = ", ".join(BUILTIN_TUI_THEME_NAMES)
-        return CommandResult(
-            handled=True,
-            message=f"Current theme: {current_theme}\nAvailable themes: {themes}",
-        )
+        return CommandResult(handled=True, theme_picker_requested=True)
 
     theme_name = context.args.strip()
     if theme_name not in BUILTIN_TUI_THEME_NAMES:
