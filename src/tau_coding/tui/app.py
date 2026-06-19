@@ -1487,6 +1487,8 @@ class TauTuiApp(App[None]):
             self.screen.action_cursor_up()
             return
         if not self._completion_state.items:
+            if self.action_edit_queued_follow_up():
+                return
             self.query_one("#prompt", PromptInput).action_cursor_up()
             return
         self._completion_state = self._completion_state.select_previous()

@@ -1846,7 +1846,7 @@ async def test_tui_app_up_arrow_edits_latest_queued_follow_up() -> None:
         prompt = app.query_one("#prompt", TextArea)
         prompt.focus()
         prompt.text = ""
-        prompt.action_completion_previous()
+        await pilot.press("up")
         await pilot.pause()
 
         assert prompt.text == "latest follow-up"
