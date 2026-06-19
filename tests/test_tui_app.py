@@ -7,7 +7,7 @@ import pytest
 from rich.console import Console
 from rich.panel import Panel
 from textual.containers import VerticalScroll
-from textual.widgets import Button, Footer, Input, Label, ListItem, ListView, TextArea
+from textual.widgets import Footer, Input, Label, ListItem, ListView, TextArea
 
 from tau_agent import (
     AgentEndEvent,
@@ -1383,7 +1383,31 @@ async def test_tui_app_help_uses_modal_instead_of_transcript() -> None:
         assert isinstance(app.screen, CommandOutputScreen)
         assert app.state.items == []
         assert "Available commands:" in app.screen.message
-        assert app.screen.query_one("#command-output-scroll", VerticalScroll) is not None
+        scroll = app.screen.query_one("#command-output-scroll", VerticalScroll)
+        assert scroll is not None
+        assert app.screen.focused is scroll
+
+
+@pytest.mark.anyio
+async def test_tui_app_command_modal_arrow_keys_scroll_output() -> None:
+    app = TauTuiApp(FakeSession())
+    long_message = "\n".join(f"line {index}" for index in range(80))
+
+    async with app.run_test(size=(100, 20)) as pilot:
+        app._show_command_message("/long", long_message)
+        await pilot.pause()
+
+        assert isinstance(app.screen, CommandOutputScreen)
+        scroll = app.screen.query_one("#command-output-scroll", VerticalScroll)
+        await pilot.pause()
+        assert scroll.max_scroll_y > 0
+        assert app.screen.focused is scroll
+        assert scroll.scroll_y == 0
+
+        await pilot.press("down")
+        await pilot.pause()
+
+        assert scroll.scroll_y > 0
 
 
 @pytest.mark.anyio
@@ -1633,10 +1657,47 @@ async def test_tui_login_opens_method_picker() -> None:
         await pilot.pause()
 
         assert isinstance(app.screen, LoginMethodPickerScreen)
-        assert str(app.screen.query_one("#login-method-subscription", Button).label) == (
-            "Subscription"
-        )
-        assert str(app.screen.query_one("#login-method-api-key", Button).label) == "API key"
+        method_list = app.screen.query_one("#login-method-list", ListView)
+        labels = [str(item.query_one(Label).render()) for item in method_list.children]
+        assert labels == [
+            "Subscription\n  Sign in with an OAuth account.",
+            "API key\n  Save a provider API key.",
+        ]
+        assert app.screen.focused is method_list
+        assert method_list.index == 0
+
+
+@pytest.mark.anyio
+async def test_tui_login_method_picker_supports_arrow_keys() -> None:
+    app = TauTuiApp(FakeSession())
+
+    async with app.run_test() as pilot:
+        prompt = app.query_one("#prompt")
+        prompt.value = "/login"
+        await pilot.press("enter")
+        await pilot.pause()
+
+        assert isinstance(app.screen, LoginMethodPickerScreen)
+        method_list = app.screen.query_one("#login-method-list", ListView)
+        assert app.screen.focused is method_list
+        assert method_list.index == 0
+
+        await pilot.press("down")
+        await pilot.pause()
+        assert method_list.index == 1
+
+        await pilot.press("up")
+        await pilot.pause()
+        assert method_list.index == 0
+
+        await pilot.press("down")
+        await pilot.press("enter")
+        await pilot.pause()
+
+        assert isinstance(app.screen, LoginProviderPickerScreen)
+        provider_list = app.screen.query_one("#login-provider-list", ListView)
+        labels = [str(item.query_one(Label).render()) for item in provider_list.children]
+        assert labels[0] == "OpenAI\n  openai"
 
 
 @pytest.mark.anyio
@@ -1650,7 +1711,7 @@ async def test_tui_login_subscription_opens_oauth_provider_picker() -> None:
         await pilot.pause()
 
         assert isinstance(app.screen, LoginMethodPickerScreen)
-        await pilot.click("#login-method-subscription")
+        await pilot.press("enter")
         await pilot.pause()
 
         assert isinstance(app.screen, LoginProviderPickerScreen)
@@ -1671,7 +1732,8 @@ async def test_tui_login_api_key_opens_api_provider_picker() -> None:
         await pilot.pause()
 
         assert isinstance(app.screen, LoginMethodPickerScreen)
-        await pilot.click("#login-method-api-key")
+        app.screen.action_cursor_down()
+        app.screen.action_select_cursor()
         await pilot.pause()
 
         assert isinstance(app.screen, LoginProviderPickerScreen)

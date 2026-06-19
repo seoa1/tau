@@ -417,12 +417,31 @@ class SessionPickerScreen(ModalScreen[str | None]):
         self.dismiss(None)
 
 
+class CommandOutputScroll(VerticalScroll):
+    """Scrollable command output area with deterministic arrow-key scrolling."""
+
+    BINDINGS: ClassVar[list[BindingEntry]] = [
+        Binding("up", "scroll_up", "Scroll up", show=False, priority=True),
+        Binding("down", "scroll_down", "Scroll down", show=False, priority=True),
+    ]
+
+    def action_scroll_up(self) -> None:
+        """Scroll command output up."""
+        self.scroll_y = max(0, self.scroll_y - 1)
+
+    def action_scroll_down(self) -> None:
+        """Scroll command output down."""
+        self.scroll_y = min(self.max_scroll_y, self.scroll_y + 1)
+
+
 class CommandOutputScreen(ModalScreen[None]):
     """Dismissible modal for slash-command output."""
 
     BINDINGS: ClassVar[list[BindingEntry]] = [
         Binding("escape", "close", "Close"),
         Binding("enter", "close", "Close"),
+        Binding("up", "scroll_up", "Scroll up", show=False, priority=True),
+        Binding("down", "scroll_down", "Scroll down", show=False, priority=True),
     ]
 
     def __init__(self, title: str, message: str, *, theme: TuiTheme) -> None:
@@ -435,13 +454,34 @@ class CommandOutputScreen(ModalScreen[None]):
         """Compose command output."""
         with Vertical(id="command-output"):
             yield Static(self.title_text, id="command-output-title")
-            with VerticalScroll(id="command-output-scroll"):
+            with CommandOutputScroll(id="command-output-scroll"):
                 yield Static(self.message, id="command-output-body", markup=False)
             yield Static("Enter or Escape closes", id="command-output-help")
+
+    def on_mount(self) -> None:
+        """Focus the scroll area so arrow keys navigate long output."""
+        self.query_one("#command-output-scroll", VerticalScroll).focus()
+
+    def on_key(self, event: Key) -> None:
+        """Route arrow keys to the command output scroll area."""
+        if event.key == "up":
+            event.stop()
+            self.action_scroll_up()
+        elif event.key == "down":
+            event.stop()
+            self.action_scroll_down()
 
     def action_close(self) -> None:
         """Close the command output modal."""
         self.dismiss(None)
+
+    def action_scroll_up(self) -> None:
+        """Scroll command output up."""
+        self.query_one("#command-output-scroll", CommandOutputScroll).action_scroll_up()
+
+    def action_scroll_down(self) -> None:
+        """Scroll command output down."""
+        self.query_one("#command-output-scroll", CommandOutputScroll).action_scroll_down()
 
 
 class LoginProviderPickerScreen(ModalScreen[str | None]):
@@ -520,7 +560,10 @@ class LoginMethodPickerScreen(ModalScreen[str | None]):
     """Login method picker for the TUI login flow."""
 
     BINDINGS: ClassVar[list[BindingEntry]] = [
-        Binding("escape", "cancel", "Cancel"),
+        Binding("escape", "cancel", "Cancel", priority=True),
+        Binding("up", "cursor_up", "Up", show=False, priority=True),
+        Binding("down", "cursor_down", "Down", show=False, priority=True),
+        Binding("enter", "select_cursor", "Select", show=False, priority=True),
     ]
 
     def __init__(self, *, theme: TuiTheme) -> None:
@@ -532,20 +575,36 @@ class LoginMethodPickerScreen(ModalScreen[str | None]):
         with Vertical(id="login-method-picker"):
             yield Static("Login", id="login-method-title")
             yield Static("Choose how to authenticate.", id="login-method-intro")
-            with Vertical(id="login-method-actions"):
-                yield Button(
-                    "Subscription",
+            yield LoginMethodListView(
+                ListItem(
+                    Label("Subscription\n  Sign in with an OAuth account.", markup=False),
                     id="login-method-subscription",
-                    variant="primary",
-                )
-                yield Static("Sign in with an OAuth account.", classes="login-method-description")
-                yield Button("API key", id="login-method-api-key")
-                yield Static("Save a provider API key.", classes="login-method-description")
+                ),
+                ListItem(
+                    Label("API key\n  Save a provider API key.", markup=False),
+                    id="login-method-api-key",
+                ),
+                id="login-method-list",
+            )
             yield Static("Enter selects - Escape closes", id="login-method-help")
 
     def on_mount(self) -> None:
         """Focus the default subscription method."""
-        self.query_one("#login-method-subscription", Button).focus()
+        method_list = self.query_one("#login-method-list", ListView)
+        method_list.index = 0
+        method_list.focus()
+
+    def on_key(self, event: Key) -> None:
+        """Route arrow keys between login method buttons."""
+        if event.key == "up":
+            event.stop()
+            self.action_cursor_up()
+        elif event.key == "down":
+            event.stop()
+            self.action_cursor_down()
+        elif event.key == "enter":
+            event.stop()
+            self.action_select_cursor()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Dismiss with the selected login method."""
@@ -554,9 +613,57 @@ class LoginMethodPickerScreen(ModalScreen[str | None]):
         elif event.button.id == "login-method-api-key":
             self.dismiss("api-key")
 
+    def on_list_view_selected(self, event: ListView.Selected) -> None:
+        """Dismiss with the selected login method."""
+        if event.item.id == "login-method-subscription":
+            self.dismiss("subscription")
+        elif event.item.id == "login-method-api-key":
+            self.dismiss("api-key")
+
     def action_cancel(self) -> None:
         """Close without selecting a login method."""
         self.dismiss(None)
+
+    def action_cursor_up(self) -> None:
+        """Focus the previous login method."""
+        self._move_method_cursor(offset=-1)
+
+    def action_cursor_down(self) -> None:
+        """Focus the next login method."""
+        self._move_method_cursor(offset=1)
+
+    def action_select_cursor(self) -> None:
+        """Select the currently focused login method."""
+        self.query_one("#login-method-list", ListView).action_select_cursor()
+
+    def _move_method_cursor(self, *, offset: int) -> None:
+        method_list = self.query_one("#login-method-list", ListView)
+        item_count = len(method_list.children)
+        if item_count == 0:
+            method_list.index = None
+            return
+        current_index = method_list.index if method_list.index is not None else 0
+        method_list.index = (current_index + offset) % item_count
+
+
+class LoginMethodListView(ListView):
+    """List view with wrapping arrow navigation for the login method picker."""
+
+    def action_cursor_up(self) -> None:
+        """Move to the previous login method."""
+        self._move_cursor(offset=-1)
+
+    def action_cursor_down(self) -> None:
+        """Move to the next login method."""
+        self._move_cursor(offset=1)
+
+    def _move_cursor(self, *, offset: int) -> None:
+        item_count = len(self.children)
+        if item_count == 0:
+            self.index = None
+            return
+        current_index = self.index if self.index is not None else 0
+        self.index = (current_index + offset) % item_count
 
 
 class ThemePickerScreen(ModalScreen[TuiThemeName | None]):
@@ -1091,6 +1198,7 @@ class TauTuiApp(App[None]):
         color: $tau-muted-text;
     }
 
+    LoginMethodPickerScreen,
     LoginProviderPickerScreen,
     ThemePickerScreen,
     ModelPickerScreen {
@@ -1121,6 +1229,7 @@ class TauTuiApp(App[None]):
         margin-bottom: 1;
     }
 
+    #login-method-list,
     #login-provider-list,
     #theme-picker-list,
     #model-picker-list {
@@ -1131,26 +1240,21 @@ class TauTuiApp(App[None]):
         border: tall $tau-border;
     }
 
+    #login-method-list ListItem Label,
     #login-provider-list ListItem Label,
     #theme-picker-list ListItem Label,
     #model-picker-list ListItem Label {
         color: $tau-screen-text;
     }
 
-    #login-method-intro,
-    .login-method-description {
+    #login-method-intro {
         height: 1;
         color: $tau-muted-text;
-    }
-
-    #login-method-actions {
-        height: auto;
         margin-bottom: 1;
     }
 
-    #login-method-actions Button {
-        width: 100%;
-        margin-top: 1;
+    #login-method-list {
+        max-height: 6;
     }
 
     #model-picker-search {
@@ -1453,7 +1557,11 @@ class TauTuiApp(App[None]):
         """Accept the currently selected prompt completion."""
         if isinstance(
             self.screen,
-            SessionPickerScreen | LoginProviderPickerScreen | ThemePickerScreen | ModelPickerScreen,
+            SessionPickerScreen
+            | LoginMethodPickerScreen
+            | LoginProviderPickerScreen
+            | ThemePickerScreen
+            | ModelPickerScreen,
         ):
             self.screen.action_select_cursor()
             return
@@ -1468,9 +1576,16 @@ class TauTuiApp(App[None]):
 
     def action_completion_next(self) -> None:
         """Select the next prompt completion or move down in the prompt."""
+        if isinstance(self.screen, CommandOutputScreen):
+            self.screen.action_scroll_down()
+            return
         if isinstance(
             self.screen,
-            SessionPickerScreen | LoginProviderPickerScreen | ThemePickerScreen | ModelPickerScreen,
+            SessionPickerScreen
+            | LoginMethodPickerScreen
+            | LoginProviderPickerScreen
+            | ThemePickerScreen
+            | ModelPickerScreen,
         ):
             self.screen.action_cursor_down()
             return
@@ -1482,9 +1597,16 @@ class TauTuiApp(App[None]):
 
     def action_completion_previous(self) -> None:
         """Select the previous prompt completion or move up in the prompt."""
+        if isinstance(self.screen, CommandOutputScreen):
+            self.screen.action_scroll_up()
+            return
         if isinstance(
             self.screen,
-            SessionPickerScreen | LoginProviderPickerScreen | ThemePickerScreen | ModelPickerScreen,
+            SessionPickerScreen
+            | LoginMethodPickerScreen
+            | LoginProviderPickerScreen
+            | ThemePickerScreen
+            | ModelPickerScreen,
         ):
             self.screen.action_cursor_up()
             return
