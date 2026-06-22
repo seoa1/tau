@@ -826,6 +826,17 @@ def test_transcript_selection_text_tracks_tool_result_visibility() -> None:
 
 
 @pytest.mark.anyio
+async def test_tui_message_start_does_not_mount_empty_assistant_message() -> None:
+    app = TauTuiApp(FakeSession())
+
+    async with app.run_test(size=(120, 30)) as pilot:
+        await app._apply_streaming_transcript_event(MessageStartEvent())
+        await pilot.pause()
+
+        assert list(app.query(StreamingTranscriptMessageWidget)) == []
+
+
+@pytest.mark.anyio
 async def test_tui_streaming_deltas_update_active_message_without_full_refresh() -> None:
     session = FakeSession(
         events=[

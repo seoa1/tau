@@ -1955,8 +1955,6 @@ class TauTuiApp(App[None]):
             self._refresh_chrome()
             return
         if isinstance(event, MessageStartEvent):
-            if event.message_role == "assistant":
-                await transcript.start_assistant_message(theme=theme)
             return
         if isinstance(event, MessageDeltaEvent):
             await transcript.append_assistant_delta(event.delta, theme=theme)
