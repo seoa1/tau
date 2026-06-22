@@ -90,7 +90,8 @@ The supported parameter mappings are:
 
 - `reasoning_effort`: top-level OpenAI-compatible chat-completions field.
 - `reasoning.effort`: nested Responses API shape, sent as
-  `{ "reasoning": { "effort": "..." } }`.
+  `{ "reasoning": { "effort": "..." } }` for provider configs that explicitly
+  opt into it.
 - `anthropic.thinking`: Anthropic extended thinking, sent as
   `{ "thinking": { "type": "enabled", "budget_tokens": ... } }`.
 
@@ -115,11 +116,11 @@ and `xhigh`, with defaults and support varying by model. Tau's direct OpenAI
 entry maps Tau's normalized levels to `reasoning_effort` only for configured
 reasoning-capable models.
 
-Codex clients expose `model_reasoning_effort` for supported models. Tau maps
-Codex subscription thinking levels to the Responses API `reasoning.effort`
-payload shape for the built-in Codex models that declare support. Codex does not
-currently expose Tau's `off` mode because the Responses effort values begin at
-`minimal` for this transport.
+Codex clients expose `model_reasoning_effort` for supported models, but the
+ChatGPT Codex subscription endpoint used by Tau has not been validated with a
+reasoning-effort request parameter. Built-in `openai-codex` models therefore do
+not declare configurable thinking support yet; Tau can still stream Codex
+reasoning output when the transport emits it.
 
 Anthropic has used both explicit extended-thinking token budgets and newer
 adaptive/effort controls, with support changing by model family. Tau maps its

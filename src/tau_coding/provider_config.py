@@ -526,6 +526,12 @@ def provider_thinking_unavailable_reason(
     """Explain why a provider/model pair has no configurable thinking modes."""
     selected_model = model or provider.default_model
     if provider.thinking_levels is None:
+        if isinstance(provider, OpenAICodexProviderConfig):
+            return (
+                "OpenAI Codex subscription can stream reasoning output, but Tau does "
+                "not have a validated Codex transport mapping for changing reasoning "
+                "effort yet"
+            )
         return f"Provider {provider.name} does not declare thinking_levels"
     if provider.thinking_models and selected_model not in provider.thinking_models:
         return f"{provider.name}:{selected_model} is not declared in thinking_models"
