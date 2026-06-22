@@ -2499,7 +2499,7 @@ class TauTuiApp(App[None]):
             lambda: self._active_notification_keys.discard(key),
             name=f"notification-dedupe-{hash(key)}",
         )
-        self.notify(message, severity=severity)
+        self.notify(message, severity=severity, markup=False)
 
     def _refresh(self) -> None:
         theme = self.tui_settings.resolved_theme

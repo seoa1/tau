@@ -13,7 +13,7 @@ from tau_coding.paths import TauPaths
 class SessionRecordModel(BaseModel):
     """JSON-serializable coding-session metadata."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")
 
     id: str
     path: str

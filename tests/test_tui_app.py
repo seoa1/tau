@@ -1860,6 +1860,20 @@ async def test_tui_app_deduplicates_active_notifications() -> None:
 
 
 @pytest.mark.anyio
+async def test_tui_app_notifications_render_literal_markup_text() -> None:
+    app = TauTuiApp(FakeSession())
+
+    async with app.run_test(notifications=True) as pilot:
+        app._notify("Error: value [type=extra_forbidden]", severity="error")
+        await pilot.pause()
+
+        [notification] = tuple(app._notifications)
+
+    assert notification.message == "Error: value [type=extra_forbidden]"
+    assert notification.markup is False
+
+
+@pytest.mark.anyio
 async def test_tui_app_help_uses_modal_instead_of_transcript() -> None:
     app = TauTuiApp(FakeSession())
 
