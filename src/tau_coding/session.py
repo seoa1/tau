@@ -556,6 +556,16 @@ class CodingSession:
         return self._config.session_id
 
     @property
+    def session_title(self) -> str | None:
+        """Return this session's indexed human-friendly title, if named."""
+        if self._config.session_id is None or self._config.session_manager is None:
+            return None
+        record = self._config.session_manager.get_session(self._config.session_id)
+        if record is None:
+            return None
+        return record.title
+
+    @property
     def session_manager(self) -> SessionManager | None:
         """Return the session manager, if available."""
         return self._config.session_manager

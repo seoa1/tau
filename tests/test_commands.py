@@ -44,6 +44,7 @@ class FakeSession:
         self.tui_theme = "tau-dark"
         self.resource_diagnostics = ()
         self.session_id = "session-1"
+        self.session_title: str | None = None
         self.session_manager: SessionManager | None = manager
         self.reload_called = False
         self.provider_reload_called = False
@@ -180,10 +181,22 @@ def test_session_command_includes_session_details(tmp_path: Path) -> None:
     assert "Auto compact threshold: 200" in result.message
     assert "Resource diagnostics: 0" in result.message
     assert "Session: session-1" in result.message
+    assert "Session name:" not in result.message
     assert (
         create_default_command_registry().execute(FakeSession(tmp_path), "/status").message
         == "Unknown command: /status"
     )
+
+
+def test_session_command_includes_named_session_title(tmp_path: Path) -> None:
+    session = FakeSession(tmp_path)
+    session.session_title = "Customer bugfix"
+
+    result = create_default_command_registry().execute(session, "/session")
+
+    assert result.message is not None
+    assert "Session: session-1" in result.message
+    assert "Session name: Customer bugfix" in result.message
 
 
 def test_session_command_explains_unavailable_thinking_controls(tmp_path: Path) -> None:

@@ -70,6 +70,9 @@ class CommandSession(Protocol):
     def session_id(self) -> str | None: ...
 
     @property
+    def session_title(self) -> str | None: ...
+
+    @property
     def session_manager(self) -> SessionManager | None: ...
 
     def set_model(self, model: str) -> None: ...
@@ -372,6 +375,8 @@ def _status_command(context: CommandContext) -> CommandResult:
         lines.append(f"Auto compact threshold: {session.auto_compact_token_threshold}")
     if session.session_id is not None:
         lines.append(f"Session: {session.session_id}")
+    if session.session_title:
+        lines.append(f"Session name: {session.session_title}")
     return CommandResult(handled=True, message="\n".join(lines))
 
 
