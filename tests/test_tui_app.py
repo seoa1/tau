@@ -536,8 +536,8 @@ def test_assistant_chat_items_apply_syntax_highlighting_to_code_fences() -> None
 
     assert "def" in output
     assert "return" in output
-    assert "\x1b[94;48;2;11;15;20mdef" in output
-    assert "\x1b[94;48;2;11;15;20mreturn" in output
+    assert "\x1b[94;48;2;22;27;33mdef" in output
+    assert "\x1b[94;48;2;22;27;33mreturn" in output
 
 
 def test_chat_items_fallback_unknown_fenced_language_to_plain_code() -> None:
@@ -934,8 +934,8 @@ def test_light_theme_markdown_code_uses_aqua_without_background() -> None:
 
     output = console.export_text(styles=True)
 
-    assert "38;2;8;145;178" in output
-    assert "38;2;8;145;178;48;2" not in output
+    assert "38;2;15;118;110" in output
+    assert "38;2;15;118;110;48;2" not in output
 
 
 def test_tool_chat_items_color_status_metadata_not_tool_name_or_results() -> None:
