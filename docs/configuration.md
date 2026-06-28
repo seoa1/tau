@@ -128,10 +128,14 @@ providers or scoped models.
 
 ## Shell Settings
 
-Input-bar terminal commands run in non-interactive shell mode, so aliases from
-files such as `~/.zshrc` or `~/.bashrc` are not loaded automatically. Tau keeps
-that behavior explicit to avoid running arbitrary startup-file side effects
-before every terminal command.
+Tau executes shell commands in non-interactive shell mode. That includes:
+
+- TUI and print-mode terminal commands such as `\! gs` and `\!\! ll`
+- agent-invoked `bash` tool calls
+
+Non-interactive shells do not load aliases from files such as `~/.zshrc` or
+`~/.bashrc` automatically. Tau keeps that behavior explicit to avoid running
+arbitrary startup-file side effects before every command.
 
 To opt in, add a `shellCommandPrefix` to:
 
@@ -139,7 +143,9 @@ To opt in, add a `shellCommandPrefix` to:
 ~/.tau/settings.json
 ```
 
-For example, to enable aliases declared in `~/.zshrc`:
+### zsh users
+
+If your aliases are simple `alias name='command'` lines in `~/.zshrc`, use:
 
 ```json
 {
@@ -147,9 +153,43 @@ For example, to enable aliases declared in `~/.zshrc`:
 }
 ```
 
-Adjust the path to `~/.bashrc` or another file if that is where your aliases
-live. The example imports only lines beginning with `alias `; Tau does not
-source the full startup file for terminal input commands.
+### bash users
+
+If your aliases are in `~/.bashrc`, use:
+
+```json
+{
+  "shellCommandPrefix": "shopt -s expand_aliases\neval \"$(grep '^alias ' ~/.bashrc)\""
+}
+```
+
+### dedicated alias file
+
+For the most predictable setup, put Tau-safe aliases in a dedicated file such as
+`~/.tau/aliases.sh`:
+
+```bash
+alias gs='git status'
+alias ll='ls -la'
+```
+
+Then configure:
+
+```json
+{
+  "shellCommandPrefix": "shopt -s expand_aliases\neval \"$(grep '^alias ' ~/.tau/aliases.sh)\""
+}
+```
+
+The examples import only lines beginning with `alias `. Tau does not source the
+full startup file. This intentionally avoids side effects such as changing
+directories, printing text, starting background tools, or mutating unrelated
+environment variables before every command.
+
+Tau runs prefixed commands through bash-style non-interactive execution, so
+simple POSIX/bash-compatible alias declarations work best. zsh-specific aliases,
+functions, shell options, or interactive-only startup logic may not work unless
+you rewrite them into bash-compatible setup commands.
 
 Tau also accepts the snake_case key `shell_command_prefix` for consistency with
 other Tau settings.
