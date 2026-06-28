@@ -205,6 +205,7 @@
     box-shadow:0 1px 0 rgba(19,33,60,.04), 0 24px 48px -28px rgba(19,33,60,.28);
   }
   .figure canvas{ display:block; width:100%; height:auto; }
+  .figure.wide{ align-self:center; }
   .figure .figlabel{
     position:absolute; top:14px; left:18px;
     font-family:var(--grotesk); font-size:11px; letter-spacing:.18em;
@@ -350,5 +351,83 @@
   footer .l{ display:flex; gap:24px; }
 
   .tau-landing :focus-visible{ outline:2px solid var(--accent); outline-offset:3px; border-radius:2px; }
+
+  /* ---- "Why Tau?" : angle turns table ---- */
+  .turns{
+    border:1px solid var(--grid-strong); border-radius:6px; overflow:hidden;
+    background:var(--grid-strong);
+    display:grid; gap:1px;
+  }
+  .turn-row{
+    display:grid; grid-template-columns:1.4fr 1fr 1fr; align-items:center;
+    background:var(--ground);
+  }
+  .turn-row > span{ padding:14px 20px; }
+  .turn-row > span:first-child{
+    font-family:var(--grotesk); font-size:14px; color:var(--ink);
+    letter-spacing:.04em;
+  }
+  .turn-row .pi{ color:var(--ink-soft); border-left:1px solid var(--grid); font-family:var(--math); font-size:19px; }
+  .turn-row .ta{ color:var(--accent); border-left:1px solid var(--grid); font-family:var(--math); font-size:19px; background:rgba(27,63,160,.05); }
+  .turn-head{ background:#F4F7FD; }
+  .turn-head > span{
+    font-family:var(--grotesk) !important; font-size:11px !important;
+    letter-spacing:.16em; text-transform:uppercase; color:var(--ink-soft) !important;
+    padding-top:12px; padding-bottom:12px;
+  }
+  .turn-head .ta{ color:var(--accent) !important; background:rgba(27,63,160,.05); }
+  .turns-note{ margin:20px 0 0; color:var(--ink-soft); font-size:16.5px; max-width:46em; }
+
+  /* ---- "Why Tau?" : equation comparison cards ---- */
+  .eq-list{
+    display:grid; gap:1px; background:var(--grid-strong);
+    border:1px solid var(--grid-strong); border-radius:6px; overflow:hidden;
+  }
+  .eq{ background:var(--ground); padding:30px 30px 32px; }
+  .eq-title{
+    display:block; font-family:var(--grotesk); font-size:12px;
+    letter-spacing:.14em; text-transform:uppercase; color:var(--ink-soft);
+  }
+  .eq-cols{
+    display:grid; grid-template-columns:1fr 1fr; gap:1px;
+    margin-top:18px; background:var(--grid-strong);
+    border:1px solid var(--grid-strong); border-radius:6px; overflow:hidden;
+  }
+  @media (max-width:620px){ .eq-cols{ grid-template-columns:1fr; } }
+  .eq-col{
+    background:var(--ground); padding:22px 24px;
+    display:flex; flex-direction:column; gap:12px; align-items:flex-start;
+  }
+  .eq-col.tau-col{ background:rgba(27,63,160,.05); }
+  .eq-col .lbl{
+    font-family:var(--grotesk); font-size:11px; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--ink-soft);
+  }
+  .eq-col.tau-col .lbl{ color:var(--accent); }
+  .eq-col .form{ font-size:19px; color:var(--ink); }
+  .eq-col.tau-col .form{ color:var(--accent); }
+  .eq-note{ margin:18px 0 0; color:var(--ink-soft); font-size:16px; }
+
+  .family{
+    display:grid; grid-template-columns:repeat(4,1fr); gap:1px;
+    margin-top:18px; background:var(--grid-strong);
+    border:1px solid var(--grid-strong); border-radius:6px; overflow:hidden;
+  }
+  @media (max-width:620px){ .family{ grid-template-columns:repeat(2,1fr); } }
+  .family > div{
+    background:var(--ground); padding:18px 14px; text-align:center;
+  }
+  .family .fam-tau{ background:rgba(27,63,160,.05); }
+  .family .form{ display:block; font-size:18px; color:var(--ink); }
+  .family .fam-tau .form{ color:var(--accent); }
+  .family small{
+    display:block; margin-top:8px; font-family:var(--grotesk);
+    font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-soft);
+  }
+
+  /* keep the MkDocs footer above the fixed notebook margin line */
+  .md-footer:has(~ * .tau-landing),
+  .md-content:has(.tau-landing) ~ .md-footer,
+  body:has(.tau-landing) .md-footer{ position:relative; z-index:5; }
 
   @media (prefers-reduced-motion:reduce){ .tau-landing{ scroll-behavior:auto; } }

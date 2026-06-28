@@ -12,6 +12,8 @@ extra_css:
 
 extra_javascript:
   - assets/landing.js
+  - assets/mathjax.js
+  - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
 
 theme:
   name: material
@@ -40,6 +42,8 @@ theme:
 markdown_extensions:
   - admonition
   - attr_list
+  - pymdownx.arithmatex:
+      generic: true
   - md_in_html
   - pymdownx.details
   - pymdownx.superfences

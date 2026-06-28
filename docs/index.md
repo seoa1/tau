@@ -16,6 +16,7 @@ hide:
       <span class="ver">v0.1</span>
     </div>
     <div class="navlinks">
+      <a href="why-tau/">Why &#964;?</a>
       <a href="getting-started/">Docs</a>
       <a href="architecture/">Lessons</a>
       <a href="https://github.com/alejandro-ao/tau/issues/1">Roadmap</a>
@@ -29,13 +30,12 @@ hide:
         <p class="eyebrow">An educational coding-agent project</p>
         <h1>Learn how coding agents are <em>built.</em></h1>
         <p class="lede">
-          <strong>Tau</strong> is a teaching project: a small Python coding agent
-          designed to show, piece by piece, how agents stream model output,
-          call tools, manage sessions, render events, and grow into a terminal UI.
+          <strong>Tau</strong> is a small Python coding agent you read like a
+          textbook. Watch it stream model output, call tools, manage sessions,
+          and grow into a terminal UI &mdash; one readable layer at a time.
         </p>
         <p class="lede small-lede">
-          It is intentionally readable. The goal is not to hide the machinery;
-          the goal is to make the machinery understandable.
+          No hidden machinery. Every moving part is on the page.
         </p>
         <div class="cta-row">
           <span class="install">
@@ -72,20 +72,20 @@ hide:
       <div class="layer">
         <span class="idx">&#8544;</span>
         <span class="pkg">tau_ai</span>
-        <h3>How models become streams</h3>
-        <p>Start with provider adapters. Learn how model responses become provider-neutral events that the rest of the agent can consume.</p>
+        <h3>Models become streams</h3>
+        <p>Provider adapters turn model responses into provider-neutral events the rest of the agent consumes.</p>
       </div>
       <div class="layer">
         <span class="idx">&#8545;</span>
         <span class="pkg">tau_agent</span>
-        <h3>How the agent loop works</h3>
-        <p>Study the reusable harness: messages, tools, transcript state, tool calls, cancellation, queued prompts, and session primitives.</p>
+        <h3>The agent loop</h3>
+        <p>The reusable harness: messages, tools, transcript state, cancellation, queued prompts, sessions.</p>
       </div>
       <div class="layer">
         <span class="idx">&#8546;</span>
         <span class="pkg">tau_coding</span>
-        <h3>How it becomes useful</h3>
-        <p>Add the coding environment: files, shell commands, durable sessions, skills, slash commands, renderers, and a Textual TUI.</p>
+        <h3>It becomes useful</h3>
+        <p>The coding environment: files, shell, durable sessions, skills, slash commands, and a Textual TUI.</p>
       </div>
     </div>
   </section>
@@ -95,7 +95,7 @@ hide:
       <div>
         <p class="eyebrow">The lesson</p>
         <h2>Every moving part is visible.</h2>
-        <p>Tau is built to answer practical questions: What is an agent loop? Where do tool calls come from? How does the transcript grow? What should the UI know? How do sessions survive after the process exits?</p>
+        <p>Tau answers the questions tutorials skip: What <em>is</em> an agent loop? Where do tool calls come from? How does the transcript grow? How do sessions survive the process exiting?</p>
       </div>
       <div class="event-flow" aria-label="Tau event flow">
         <div class="flow-node"><span>model stream</span><small>tokens, tool requests, thinking deltas</small></div>
@@ -117,7 +117,7 @@ hide:
       <div>
         <p class="eyebrow">The core idea</p>
         <h2>Separate the brain, the environment, and the face.</h2>
-        <p>The most important lesson is the boundary. A reusable harness should not depend on a terminal UI, local file paths, Rich rendering, or app-specific resources. Those belong around the harness, not inside it.</p>
+        <p>The whole lesson is the boundary. A reusable harness must not depend on the terminal, file paths, or Rich rendering. Those wrap the harness &mdash; they never live inside it.</p>
       </div>
       <div class="terminal" aria-hidden="true">
         <div class="bar"><span></span><span></span><span></span><span class="t">tau &mdash; design split</span></div>
@@ -157,19 +157,19 @@ hide:
     <div class="principles">
       <div class="pr">
         <h3>Small layers beat magic</h3>
-        <p>Each package has one job. You can study the provider layer, harness, and coding app independently.</p>
+        <p>One job per package. Study the provider layer, harness, and coding app on their own.</p>
       </div>
       <div class="pr">
         <h3>Events make agents teachable</h3>
-        <p>The agent emits a stream you can render, test, export, and reason about instead of hiding control flow in callbacks.</p>
+        <p>The agent emits a stream you can render, test, and export &mdash; not control flow buried in callbacks.</p>
       </div>
       <div class="pr">
         <h3>Real enough to matter</h3>
-        <p>Tau is educational, but not a toy. You can run it as a terminal coding agent while reading the code that powers it.</p>
+        <p>Educational, not a toy. Run it as a real terminal agent while reading the code behind it.</p>
       </div>
       <div class="pr">
-        <h3>Documentation follows implementation</h3>
-        <p>The project is developed phase by phase, with notes explaining what was added, why it exists, and how it fits.</p>
+        <h3>Docs follow implementation</h3>
+        <p>Built phase by phase, each with notes on what was added, why, and how it fits.</p>
       </div>
     </div>
   </section>
@@ -179,7 +179,7 @@ hide:
       <div>
         <p class="eyebrow">The inspiration</p>
         <h2>Inspired by Pi, written as a Python learning path.</h2>
-        <p>Tau borrows Pi's architectural lesson: keep the reusable agent harness separate from the coding-agent environment and from the UI. It is not a line-by-line port. It is an educational Python implementation of the same core ideas.</p>
+        <p>Tau borrows Pi's architectural lesson &mdash; keep the harness, the environment, and the UI apart. Not a line-by-line port; an educational Python take on the same core ideas.</p>
       </div>
       <div class="terminal" aria-hidden="true">
         <div class="bar"><span></span><span></span><span></span><span class="t">tau &mdash; session</span></div>
@@ -196,7 +196,7 @@ hide:
 
   <section class="closing">
     <span class="turn">&#964;</span>
-    <p>Use Tau as a map for building your own coding agent: start with events, add a loop, wrap it in a harness, then give it tools and a UI.</p>
+    <p>A map for building your own agent: start with events, add a loop, wrap it in a harness, then give it tools and a UI.</p>
     <div class="cta-row">
       <span class="install">
         <span><span class="dollar">$</span> uv tool install git+https://github.com/alejandro-ao/tau.git</span>
