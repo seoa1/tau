@@ -1,0 +1,23 @@
+src/tau_coding/tui/config.py
+  d2af605c58a365c8 127,171,215
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.2",
+  "base_commit_sha": "67e5795d35e49f2c67b291cae062c7da29e76914",
+  "prompts": {
+    "d2af605c58a365c8": {
+      "agent_id": {
+        "tool": "windsurf",
+        "id": "bd394f95-82b9-45b7-8e7c-2567b8665944",
+        "model": "unknown"
+      },
+      "human_author": "Andrew Seo",
+      "messages": [],
+      "total_additions": 3,
+      "total_deletions": 3,
+      "accepted_lines": 3,
+      "overriden_lines": 0
+    }
+  }
+}
