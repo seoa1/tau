@@ -1823,6 +1823,18 @@ def test_prompt_input_keeps_small_paste_default_behavior() -> None:
     assert prompt.text_for_submission() == ""
 
 
+def test_prompt_input_highlights_leading_slash_command() -> None:
+    prompt = PromptInput()
+    prompt.slash_command_style = "red"
+    prompt.text = "  /compact keep the important details"
+
+    line = prompt.get_line(0)
+
+    assert line.spans[0].start == 2
+    assert line.spans[0].end == len("  /compact")
+    assert line.spans[0].style == "red"
+
+
 def test_prompt_input_preserves_edits_around_large_paste() -> None:
     prompt = PromptInput()
     pasted = "x" * (PASTE_DISPLAY_THRESHOLD + 1)

@@ -92,6 +92,7 @@ class TuiTheme:
     completion_selected: str
     completion_selected_description: str
     completion_description: str
+    slash_command: str
     syntax_theme: str
     role_styles: dict[str, TuiRoleStyle]
 
@@ -123,6 +124,7 @@ TAU_DARK_THEME = TuiTheme(
     completion_selected="bold #061a1a on #a7f3f0",
     completion_selected_description="#123333 on #a7f3f0",
     completion_description="#667085",
+    slash_command="#ff4f4f",
     syntax_theme="ansi_dark",
     role_styles={
         "user": TuiRoleStyle(border="#7c8ea6", body="#d8dee9 on #000000"),
@@ -166,6 +168,7 @@ HIGH_CONTRAST_THEME = TuiTheme(
     completion_selected="bold black on #7fffd4",
     completion_selected_description="black on #7fffd4",
     completion_description="white",
+    slash_command="#ff4f4f",
     syntax_theme="ansi_dark",
     role_styles={
         "user": TuiRoleStyle(border="#00b7ff", body="white on #001626"),
@@ -209,6 +212,7 @@ TAU_LIGHT_THEME = TuiTheme(
     completion_selected="bold #0f172a on #dbeafe",
     completion_selected_description="#334155 on #dbeafe",
     completion_description="#667085",
+    slash_command="#b91c1c",
     syntax_theme="ansi_light",
     role_styles={
         "user": TuiRoleStyle(border="#2563eb", body="#111827"),

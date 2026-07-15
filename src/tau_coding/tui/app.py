@@ -444,6 +444,7 @@ class PromptInput(TextArea):
 
     BINDINGS: ClassVar[list[BindingEntry]] = []
     shell_mode_style: str = ""
+    slash_command_style: str = ""
 
     def __init__(
         self,
@@ -557,15 +558,18 @@ class PromptInput(TextArea):
             self._clear_pending_paste()
 
     def get_line(self, line_index: int) -> Text:
-        """Retrieve one prompt line with shell prefixes highlighted."""
+        """Retrieve one prompt line with command tokens highlighted."""
         line = super().get_line(line_index)
-        if line_index != 0 or not self.shell_mode_style:
+        if line_index != 0:
             return line
         span = _terminal_command_prefix_span(self.text)
-        if span is None:
-            return line
-        start, end = span
-        line.stylize(self.shell_mode_style, start, end)
+        if span is not None and self.shell_mode_style:
+            start, end = span
+            line.stylize(self.shell_mode_style, start, end)
+        span = _slash_command_span(self.text)
+        if span is not None and self.slash_command_style:
+            start, end = span
+            line.stylize(self.slash_command_style, start, end)
         return line
 
     async def action_submit_follow_up(self) -> None:
@@ -2693,6 +2697,7 @@ class TauTuiApp(App[None]):
         """Focus the prompt when the app starts."""
         prompt = self.query_one(PromptInput)
         prompt.shell_mode_style = self.tui_settings.resolved_theme.accent
+        prompt.slash_command_style = self.tui_settings.resolved_theme.slash_command
         self._sync_prompt_shell_mode(prompt.text)
         prompt.focus()
         self._update_responsive_layout(self.size.width, self.size.height)
@@ -4695,6 +4700,7 @@ class TauTuiApp(App[None]):
     def _sync_prompt_shell_mode(self, text: str) -> None:
         prompt = self.query_one("#prompt", PromptInput)
         prompt.shell_mode_style = self.tui_settings.resolved_theme.accent
+        prompt.slash_command_style = self.tui_settings.resolved_theme.slash_command
         prompt.set_class(_is_terminal_command_prompt(text), "-shell-mode")
         prompt.refresh()
         self._apply_activity_indicator()
@@ -4778,6 +4784,18 @@ def _terminal_command_prefix_span(text: str) -> tuple[int, int] | None:
     if stripped.startswith("!"):
         return (leading_whitespace, leading_whitespace + 1)
     return None
+
+
+def _slash_command_span(text: str) -> tuple[int, int] | None:
+    """Return the first command token when the prompt starts with a slash command."""
+    first_line = text.split("\n", 1)[0]
+    start = len(first_line) - len(first_line.lstrip())
+    if not first_line[start:].startswith("/"):
+        return None
+    end = start
+    while end < len(first_line) and not first_line[end].isspace():
+        end += 1
+    return start, end
 
 
 def _blend_hex_colors(start: str, end: str, *, fraction: float) -> str:
