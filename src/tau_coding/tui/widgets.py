@@ -1706,7 +1706,13 @@ def render_completion_suggestions(
 
         selected = index == state.selected_index
         prefix = "› " if selected else "  "
-        style = theme.completion_selected if selected else theme.prompt_text
+        style = (
+            theme.completion_selected
+            if selected
+            else theme.slash_command
+            if item.category == "Commands"
+            else theme.prompt_text
+        )
         description_style = (
             theme.completion_selected_description if selected else theme.completion_description
         )

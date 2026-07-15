@@ -164,6 +164,7 @@ def test_get_tui_theme_returns_builtin_theme() -> None:
     assert get_tui_theme("high-contrast").prompt_border == "#00ff66"
     assert get_tui_theme("tau-light").prompt_border == "#2563eb"
     assert get_tui_theme("tau-dark").screen_background == "#000000"
+    assert get_tui_theme("tau-dark").slash_command == "#ff8cff"
 
 
 def test_tui_sidebar_position_defaults_to_left() -> None:

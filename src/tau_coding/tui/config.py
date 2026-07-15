@@ -78,6 +78,7 @@ class TuiTheme:
     prompt_background: str
     prompt_text: str
     prompt_border: str
+    slash_command: str
     autocomplete_background: str
     accent: str
     highlight_background: str
@@ -109,6 +110,7 @@ TAU_DARK_THEME = TuiTheme(
     prompt_background="#101419",
     prompt_text="#e5e7eb",
     prompt_border="#2d3748",
+    slash_command="#ff8cff",
     autocomplete_background="#000000",
     accent="#db945a",
     highlight_background="#a7f3f0",
@@ -152,6 +154,7 @@ HIGH_CONTRAST_THEME = TuiTheme(
     prompt_background="#1a1a1a",
     prompt_text="#ffffff",
     prompt_border="#00ff66",
+    slash_command="#ff8cff",
     autocomplete_background="#111111",
     accent="#ffb454",
     highlight_background="#7fffd4",
@@ -195,6 +198,7 @@ TAU_LIGHT_THEME = TuiTheme(
     prompt_background="#f8fafc",
     prompt_text="#111827",
     prompt_border="#2563eb",
+    slash_command="#be185d",
     autocomplete_background="#ffffff",
     accent="#0f766e",
     highlight_background="#dbeafe",

@@ -81,6 +81,7 @@ from tau_coding.tui.app import (
     TreePickerScreen,
     _activity_prompt_border_color,
     _completion_selected_render_line,
+    _slash_command_span,
     _terminal_command_prefix_span,
     _textual_theme_for_tau_theme,
     _theme_css_variables,
@@ -1997,6 +1998,12 @@ def test_terminal_command_prefix_span_detects_shell_mode_prefix() -> None:
     assert _terminal_command_prefix_span("hello ! pwd") is None
 
 
+def test_slash_command_span_detects_leading_command() -> None:
+    assert _slash_command_span("/model gpt-5") == (0, 6)
+    assert _slash_command_span("  /skill:review src") == (2, 15)
+    assert _slash_command_span("ask tau") is None
+
+
 def test_activity_prompt_border_uses_theme_accent_color_in_shell_mode() -> None:
     theme = TAU_LIGHT_THEME
 
@@ -2033,6 +2040,20 @@ async def test_tui_app_highlights_prompt_shell_mode() -> None:
         await pilot.pause()
 
         assert not prompt.has_class("-shell-mode")
+
+
+@pytest.mark.anyio
+async def test_tui_app_highlights_slash_commands_pink() -> None:
+    app = TauTuiApp(FakeSession())
+
+    async with app.run_test(size=(120, 30)) as pilot:
+        prompt = app.query_one("#prompt", PromptInput)
+        prompt.value = "/model gpt-5"
+        await pilot.pause()
+
+        span = prompt.get_line(0).spans[-1]
+        assert (span.start, span.end) == (0, 6)
+        assert str(span.style) == app.tui_settings.resolved_theme.slash_command
 
 
 @pytest.mark.anyio
