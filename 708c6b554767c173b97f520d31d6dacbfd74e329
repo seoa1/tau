@@ -1,0 +1,36 @@
+README.md
+  867a9dc9d48c983e 6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.2",
+  "base_commit_sha": "708c6b554767c173b97f520d31d6dacbfd74e329",
+  "prompts": {
+    "350ae2edc84263e3": {
+      "agent_id": {
+        "tool": "windsurf",
+        "id": "",
+        "model": "unknown"
+      },
+      "human_author": "Andrew Seo",
+      "messages": [],
+      "total_additions": 3,
+      "total_deletions": 3,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "867a9dc9d48c983e": {
+      "agent_id": {
+        "tool": "droid",
+        "id": "14fe978b-087c-42ab-a0ec-7e9a37bb6c7a",
+        "model": "auto"
+      },
+      "human_author": "Andrew Seo",
+      "messages": [],
+      "total_additions": 1,
+      "total_deletions": 1,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    }
+  }
+}
