@@ -1,6 +1,4 @@
-<p align="center">
-  <img src="docs/assets/tau-header.svg" alt="Tau — a Python coding-agent harness inspired by Pi" width="100%" />
-</p>
+# hello there
 
 <p align="center">
   <strong>A small, readable terminal coding agent — and a working example of how coding agents are built.</strong>
