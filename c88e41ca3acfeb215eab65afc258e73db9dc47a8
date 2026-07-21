@@ -1,0 +1,23 @@
+README.md
+  342802c17f885a1f 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.2",
+  "base_commit_sha": "c88e41ca3acfeb215eab65afc258e73db9dc47a8",
+  "prompts": {
+    "342802c17f885a1f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f86ce-96b1-7261-a1ba-2c16cda8d2f3",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Andrew Seo",
+      "messages": [],
+      "total_additions": 1,
+      "total_deletions": 3,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    }
+  }
+}
