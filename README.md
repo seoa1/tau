@@ -1,4 +1,4 @@
-# hello there
+# hello there sir
 
 <p align="center">
   <strong>A small, readable terminal coding agent — and a working example of how coding agents are built.</strong>
