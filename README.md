@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <strong>A small, readable terminal coding agent — and a working example of how coding agents are built.</strong>
+  <strong>hello there</strong>
 </p>
 
 <p align="center">
