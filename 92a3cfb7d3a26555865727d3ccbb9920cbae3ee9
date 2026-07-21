@@ -1,0 +1,23 @@
+README.md
+  3147926e1f793051 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.2",
+  "base_commit_sha": "92a3cfb7d3a26555865727d3ccbb9920cbae3ee9",
+  "prompts": {
+    "3147926e1f793051": {
+      "agent_id": {
+        "tool": "droid",
+        "id": "0cfa9b25-208d-4836-b0af-92b4f0f89679",
+        "model": "auto"
+      },
+      "human_author": "Andrew Seo",
+      "messages": [],
+      "total_additions": 1,
+      "total_deletions": 1,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    }
+  }
+}
