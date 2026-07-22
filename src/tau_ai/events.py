@@ -17,7 +17,8 @@ class ProviderResponseStartEvent(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     type: Literal["response_start"] = "response_start"
-    type1: str
+    master: str
+    type2: str
 
 
 class ProviderRetryEvent(BaseModel):
