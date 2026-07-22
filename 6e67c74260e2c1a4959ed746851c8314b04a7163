@@ -1,0 +1,23 @@
+src/tau_coding/tui/config.py
+  0b370b0d9122f69f 127,171,215
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.2",
+  "base_commit_sha": "6e67c74260e2c1a4959ed746851c8314b04a7163",
+  "prompts": {
+    "0b370b0d9122f69f": {
+      "agent_id": {
+        "tool": "droid",
+        "id": "73e892b4-a2d9-4eac-8d6f-f9137a13475a",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Andrew Seo",
+      "messages": [],
+      "total_additions": 3,
+      "total_deletions": 3,
+      "accepted_lines": 3,
+      "overriden_lines": 0
+    }
+  }
+}
