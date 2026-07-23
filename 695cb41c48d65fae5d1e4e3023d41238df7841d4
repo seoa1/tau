@@ -1,0 +1,23 @@
+AGENTS.md
+  7011854aea852572 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.2",
+  "base_commit_sha": "695cb41c48d65fae5d1e4e3023d41238df7841d4",
+  "prompts": {
+    "7011854aea852572": {
+      "agent_id": {
+        "tool": "droid",
+        "id": "6278ec8b-16e7-461b-8d69-7bbf5362ccd4",
+        "model": "auto"
+      },
+      "human_author": "Andrew Seo",
+      "messages": [],
+      "total_additions": 1,
+      "total_deletions": 1,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    }
+  }
+}
