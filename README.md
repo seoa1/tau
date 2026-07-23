@@ -20,7 +20,7 @@
 
 ---
 
-## What is Tau?
+## goodbye sir
 
 **Tau is a coding agent that lives in your terminal.** You type requests like
 "explain this repo", "add tests", or "fix this stack trace"; Tau can read files,
