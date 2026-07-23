@@ -1,0 +1,23 @@
+docs/assets/tau-header.svg
+  e4986ab1568cee2d 7-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.2",
+  "base_commit_sha": "e1847bc2b638d0dbfa202378d850870572d0e7c1",
+  "prompts": {
+    "e4986ab1568cee2d": {
+      "agent_id": {
+        "tool": "droid",
+        "id": "f53702ed-79c7-4e2b-bde6-f2ce5a3b1a09",
+        "model": "auto"
+      },
+      "human_author": "Andrew Seo",
+      "messages": [],
+      "total_additions": 36,
+      "total_deletions": 36,
+      "accepted_lines": 36,
+      "overriden_lines": 0
+    }
+  }
+}
