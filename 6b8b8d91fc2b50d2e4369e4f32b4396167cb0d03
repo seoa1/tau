@@ -1,0 +1,21 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.2",
+  "base_commit_sha": "6b8b8d91fc2b50d2e4369e4f32b4396167cb0d03",
+  "prompts": {
+    "7011854aea852572": {
+      "agent_id": {
+        "tool": "droid",
+        "id": "6278ec8b-16e7-461b-8d69-7bbf5362ccd4",
+        "model": "auto"
+      },
+      "human_author": "Andrew Seo",
+      "messages": [],
+      "total_additions": 1,
+      "total_deletions": 1,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    }
+  }
+}
