@@ -2097,6 +2097,10 @@ class TauTuiApp(App[None]):
         dock: top;
     }
 
+    Header HeaderTitle {
+        color: yellow;
+    }
+
     Footer {
         background: $tau-chrome-background;
         color: $tau-chrome-text;
