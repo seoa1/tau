@@ -1,0 +1,23 @@
+src/tau_coding/tui/app.py
+  bcaacab1db41a851 2101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.2",
+  "base_commit_sha": "f75235568ea3089a124f5b2f85f290fad2436980",
+  "prompts": {
+    "bcaacab1db41a851": {
+      "agent_id": {
+        "tool": "droid",
+        "id": "96a9b679-9057-45fb-a52f-37deca747d9a",
+        "model": "claude-sonnet-4-5-20250929"
+      },
+      "human_author": "Andrew Seo",
+      "messages": [],
+      "total_additions": 1,
+      "total_deletions": 1,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    }
+  }
+}
