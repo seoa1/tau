@@ -2093,7 +2093,7 @@ class TauTuiApp(App[None]):
 
     Header {
         background: $tau-chrome-background;
-        color: $tau-muted-text;
+        color: pink;
         dock: top;
     }
 
