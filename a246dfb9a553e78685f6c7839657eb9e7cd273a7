@@ -1,0 +1,23 @@
+.factory/worktree-setups/default.yaml
+  fd03dcaed4e6c468 1-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.2",
+  "base_commit_sha": "a246dfb9a553e78685f6c7839657eb9e7cd273a7",
+  "prompts": {
+    "fd03dcaed4e6c468": {
+      "agent_id": {
+        "tool": "droid",
+        "id": "49c3fe33-58a0-4de3-ad73-05db32761ffa",
+        "model": "auto"
+      },
+      "human_author": "Andrew Seo",
+      "messages": [],
+      "total_additions": 19,
+      "total_deletions": 8,
+      "accepted_lines": 11,
+      "overriden_lines": 0
+    }
+  }
+}
