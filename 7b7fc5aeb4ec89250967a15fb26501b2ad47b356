@@ -1,0 +1,23 @@
+src/tau_coding/tui/app.py
+  5b8172e47cf3372b 2096
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.2",
+  "base_commit_sha": "7b7fc5aeb4ec89250967a15fb26501b2ad47b356",
+  "prompts": {
+    "5b8172e47cf3372b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f86e1-bce8-7552-8404-c112ed43eb13",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Andrew Seo",
+      "messages": [],
+      "total_additions": 1,
+      "total_deletions": 1,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    }
+  }
+}
