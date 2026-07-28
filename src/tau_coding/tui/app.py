@@ -2083,7 +2083,7 @@ RESERVED_EXTENSION_INTERCEPTOR_KEYS: frozenset[str] = frozenset({"ctrl+c", "ctrl
 class TauTuiApp(App[None]):
     """Interactive Textual frontend for a ``CodingSession``."""
 
-    TITLE = "Tau"
+    TITLE = "hello there"
     CSS = """
     Screen {
         layout: vertical;
@@ -2601,7 +2601,7 @@ class TauTuiApp(App[None]):
 
     def _sync_header_title(self) -> None:
         """Reflect the active session name in Textual's header state."""
-        self.title = "Tau"
+        self.title = "hello there"
         self.sub_title = _session_header_sub_title(self.session)
         self._sync_terminal_title()
 
