@@ -1,0 +1,23 @@
+src/tau_coding/tui/app.py
+  fd03dcaed4e6c468 2086,2604
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.2",
+  "base_commit_sha": "7ed7ff614b0a417c29b2ff5e5a6161907d2ca21a",
+  "prompts": {
+    "fd03dcaed4e6c468": {
+      "agent_id": {
+        "tool": "droid",
+        "id": "49c3fe33-58a0-4de3-ad73-05db32761ffa",
+        "model": "auto"
+      },
+      "human_author": "Andrew Seo",
+      "messages": [],
+      "total_additions": 2,
+      "total_deletions": 2,
+      "accepted_lines": 2,
+      "overriden_lines": 0
+    }
+  }
+}
