@@ -18,7 +18,7 @@ class ProviderResponseStartEvent(BaseModel):
 
     type: Literal["response_start"] = "response_start"
     master: str
-    type2: str
+    type1: str
 
 
 class ProviderRetryEvent(BaseModel):
