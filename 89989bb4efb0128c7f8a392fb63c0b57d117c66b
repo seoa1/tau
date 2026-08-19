@@ -1,0 +1,23 @@
+src/tau_ai/events.py
+  8cd2384e7be5d7ab 20-21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.2",
+  "base_commit_sha": "89989bb4efb0128c7f8a392fb63c0b57d117c66b",
+  "prompts": {
+    "8cd2384e7be5d7ab": {
+      "agent_id": {
+        "tool": "droid",
+        "id": "99b7f06d-9ca7-4e3b-ae61-29eb338dbc55",
+        "model": "claude-sonnet-4-5-20250929"
+      },
+      "human_author": "Andrew Seo",
+      "messages": [],
+      "total_additions": 2,
+      "total_deletions": 2,
+      "accepted_lines": 2,
+      "overriden_lines": 0
+    }
+  }
+}
