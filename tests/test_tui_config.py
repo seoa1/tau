@@ -5,6 +5,8 @@ import pytest
 from tau_coding.paths import TauPaths
 from tau_coding.tui.config import (
     HIGH_CONTRAST_THEME,
+    TAU_DARK_THEME,
+    TAU_LIGHT_THEME,
     TuiConfigError,
     TuiKeybindings,
     TuiSettings,
@@ -14,6 +16,12 @@ from tau_coding.tui.config import (
     tui_settings_from_json,
     tui_settings_path,
 )
+
+
+def test_builtin_themes_render_slash_commands_in_yellow() -> None:
+    assert TAU_DARK_THEME.slash_command == "#ffd000"
+    assert HIGH_CONTRAST_THEME.slash_command == "#ffd000"
+    assert TAU_LIGHT_THEME.slash_command == "#a16207"
 
 
 def test_tui_settings_path_uses_tau_home(tmp_path: Path) -> None:
