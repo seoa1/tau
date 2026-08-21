@@ -1,0 +1,11 @@
+name: tau-python-uv
+script: |
+  set -euo pipefail
+  uv sync --dev
+initialPrompt: |
+  This worktree is set up. Dependencies are synced via `uv sync --dev`. Run Tau from
+  the checkout with `uv run tau`. Run checks with `uv run pytest`, `uv run ruff check .`,
+  `uv run ruff format --check .`, and `uv run mypy`.
+cleanupScript: |
+  set -euo pipefail
+  rm -rf .venv
