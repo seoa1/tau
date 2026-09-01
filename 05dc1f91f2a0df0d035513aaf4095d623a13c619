@@ -1,0 +1,23 @@
+.factory/worktree-setups/test-success.yaml
+  2b87326c2d6b48f8 1-2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.2",
+  "base_commit_sha": "05dc1f91f2a0df0d035513aaf4095d623a13c619",
+  "prompts": {
+    "2b87326c2d6b48f8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a05a8b-9d1e-78c0-8ec9-134fec1abaca",
+        "model": "unknown"
+      },
+      "human_author": "Andrew Seo",
+      "messages": [],
+      "total_additions": 2,
+      "total_deletions": 0,
+      "accepted_lines": 2,
+      "overriden_lines": 0
+    }
+  }
+}
