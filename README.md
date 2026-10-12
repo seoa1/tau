@@ -1,3 +1,5 @@
+# hello there
+
 <p align="center">
   <img src="docs/assets/tau-header.svg" alt="Tau — a Python coding-agent harness inspired by Pi" width="100%" />
 </p>
